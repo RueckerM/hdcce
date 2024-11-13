@@ -4,7 +4,7 @@ Title: Estimation and Inference for High-Dimensional Panel Data Models with
        Interactive Fixed Effects
 Version: 0.1.0
 Date: 2024-11-13
-Author: Maximilian Ruecker [aut, cre], Michael Vogt[aut], Christopher Walsh [aut], Oliver Linton[aut]
+Author: Maximilian Ruecker [aut, cre], Michael Vogt [aut], Christopher Walsh [aut], Oliver Linton [aut]
 Maintainer: Maximilian Ruecker <maximilian.ruecker@uni.ulm.de>
 Description: Estimation and Inference procedures for High-Dimensional 
              Panel Models with Interactive Fixed Effects proposed in Linton, 0., Ruecker, M.,
