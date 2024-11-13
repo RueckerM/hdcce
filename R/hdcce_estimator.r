@@ -9,8 +9,8 @@
 #'   the dependent variables and data$x the regressors. Both are sorted such
 #'   that first T observations are those for unit 1, followed by the T
 #'   observations for unit 2, etc.
-#' @param obs_N,obs_T The number of cross-section units (obs_N) and (obs_T) in
-#'   the data.
+#' @param obs_N,obs_T The number of cross-section units (obs_N) and time series
+#'   length (obs_T) in the data.
 #' @param TRUNC The truncation parameter tau used to estimate the number of
 #'   factors. Default is 0.01.
 #' @param NFACTORS Allows to set the number of factors used in estimation.
@@ -18,9 +18,9 @@
 #' @param variant Choose whether to use the lasso based estimator
 #'   (variant = "Lasso" (Default)) or the least squares variant (variant = "LS").
 #' @param lambda User specified lambda grid.
-#' @param NFOLDS The number of folds used for cross-validation
-#'   as described in the paper. Default is NFOLDS = 10. Fold size can vary by one
-#'   if obs_N is not divisible by NFOLDS.
+#' @param NFOLDS The number of folds (partitioned along cross-section n) used for
+#'  cross-validation (as described in the paper). Default is NFOLDS = 10.
+#'  Fold size can vary by one if obs_N is not divisible by NFOLDS.
 #'@param foldid Integer vector (obs_N*obs_T - dimensional) containing a label
 #'   for each sample to determine its fold for CV.
 #' @param scree_plot Logical variable to indicate whether a scree plot of the
@@ -29,37 +29,36 @@
 #' number of estimated factors and the lasso penalty parameter. More
 #' specifically:
 #' \itemize{
-#' \item Unless penalty_choice = "None", the function returns a list with
+#' \item If a lambda sequence was supplied or variant = "LS", then the function
+#' returns a list with
 #' \describe{
 #'   \item{$coefs}{The coefficient estimates.}
 #'   \item{$K_hat}{The estimated number of factors. If NFACTORS was
 #'   set by user then this will be returned.}
-#'   \item{$Lambda}{The data driven lasso penalty choice. If variant ="LS",
-#'   it is non-existent.}
 #'   }
-#' \item If the option lambda = "lambda" was set, then the function
+#' \item If no lambda sequence was supplied and variant = "Lasso", then the function
 #' returns a list with
 #'  \describe{
-#'   \item{$coefs}{The coefficient estimates.}
+#'   \item{$coefs}{The estimated coefficients.}
 #'   \item{$K_hat}{The estimated number of factors. If NFACTORS was
 #'   set by user then this will be returned.}
-#'   \item{$Lambda}{The values of the lasso penalty parameters used. If
-#'   variant = "LS", it is non-existent.}
+#'   \item{$Lambda}{The lambda_min calculated by cross-validation.}
 #'   }
 #' }
 #' @examples
 #' # Load the data set
-#' data("data_example")
+#' data("data_estimation")
 #'
 #' # Set the dimensions of the data
 #' obs_N <- 50
 #' obs_T <- 50
 #'
 #' # Do the estimation
-#' estimate_model <- hdcce_estimator(data = data_example, obs_N = obs_N,
+#' estimate_model <- hdcce_estimator(data = data_estimation, obs_N = obs_N,
 #'                       obs_T = obs_T, TRUNC = 0.01, NFACTORS = NULL,
-#'                       variant = "Lasso", lambda = NULL, NFOLDS = NULL,
+#'                       variant = "Lasso", lambda = NULL, NFOLDS = 10,
 #'                       foldid = NULL, scree_plot = TRUE)
+#' print(estimate_model$coefs[c(1:10)])
 #'
 #' @references  Linton, 0., Ruecker, M., Vogt, M., Walsh, C. (2024) "Estimation
 #' and Inference in High-Dimensional Panel Data Models with Interactive
@@ -67,43 +66,39 @@
 
 
 
-
+#' @export
 hdcce_estimator <- function(data, obs_N, obs_T, TRUNC = 0.01,
                                NFACTORS = NULL, variant = "Lasso",
-                               lambda = NULL, NFOLDS = NULL,
+                               lambda = NULL, NFOLDS = 10,
                                foldid = NULL, scree_plot = TRUE){
 # Initial Checks
 #--------------------------------------------------------------------------
 
   # Check to see whether a correct variant has been supplied
-  if ((variant != "LS") * (variant != "Lasso") == 1){
-    stop('Variant must be set to "LS" or "Lasso"')
+  if (!((variant == "LS") | (variant == "Lasso"))){
+    stop('Variant must be set to "LS" or "Lasso."')
   }
   # Interception for foldid
   if(class(foldid) == "numeric"){
-    if(all(foldid == floor(foldid)) == FALSE){
-      stop('Provided vector for CV must contain integers only')
+    if(!all(foldid == floor(foldid))){
+      stop('Provided vector for CV must contain integers only.')
     }
     if(length(foldid) != (obs_N * obs_T)){
       stop('Provided vector for CV has wrong dimension.')
     }
   }
   # Interception for trunc
-  if(is.null(TRUNC) == FALSE){
-    if(TRUNC > 1 | TRUNC <=0){
-      stop("Supplied truncation invalid. Must be in (0,1]")
-    }
-  }
+    if(TRUNC > 1 | TRUNC <= 0){
+      stop('Supplied truncation invalid. Must be in (0,1].')
+   }
 
   # Interception for NFOLDS
-  if(is.null(NFOLDS) == FALSE){
     if(NFOLDS >= obs_N){
       stop("Supplied number NFOLDS must be less then obs_N")
     }
     if(NFOLDS != floor(NFOLDS)){
       stop("Supplied number NFOLDS must be integer valued")
     }
-  }
 
 
   # Pull out the data
@@ -120,7 +115,7 @@ hdcce_estimator <- function(data, obs_N, obs_T, TRUNC = 0.01,
   }
 
   # Interception for NFACTORS
-  if(is.null(NFACTORS) == FALSE){
+  if(!is.null(NFACTORS)){
     if(NFACTORS >= p){
       stop("Supplied number NFACTORS must be less then p")
     }
@@ -157,7 +152,7 @@ hdcce_estimator <- function(data, obs_N, obs_T, TRUNC = 0.01,
 
   # Check for user-specified fixed number of factors
   if(class(NFACTORS) == "numeric"){
-    if(is.naturalnumber(NFACTORS) == TRUE){
+    if((floor(NFACTORS) == NFACTORS)){
       K_hat <- NFACTORS
       message(paste("User-supplied number of factors given by 'NFACTORS' = ",
                     NFACTORS," is used in estimation."))
@@ -175,7 +170,7 @@ hdcce_estimator <- function(data, obs_N, obs_T, TRUNC = 0.01,
     K_hat <- sum((TRUNC < eigen_values))
     message(paste("Number of factors estimated given by 'K_hat' =", K_hat))
 
-    if( scree_plot == TRUE){
+    if(scree_plot == TRUE){
       graphics::plot(eigen_values, ylim = c(0,1), ylab = "Normalized Eigenvalues",
                      main = paste("Estimated number of factors = ", K_hat))
       graphics::abline(h = TRUNC, col = "red")
@@ -199,6 +194,7 @@ hdcce_estimator <- function(data, obs_N, obs_T, TRUNC = 0.01,
 
   Y_hat <- rep(NA, obs_T * obs_N)
   X_hat <- matrix(NA, nrow = obs_N * obs_T, ncol = p)
+
   for(i in 1:obs_N){
     indices <- ((i-1) * obs_T + 1):(i * obs_T)
     Y_hat[indices] <- Pi_hat %*% t(t(Y_data[indices]))
@@ -225,60 +221,65 @@ hdcce_estimator <- function(data, obs_N, obs_T, TRUNC = 0.01,
                                       alpha = 1, lambda = lambda,
                                       intercept = FALSE)
           message("User specified lambda grid selected.")
-          results <- list(coefs = fit_Lasso$beta, K_hat = K_hat,
-                          Lambda = fit_Lasso$lambda)
+          results <- list(coefs = fit_Lasso$beta, K_hat = K_hat)
+
     }else {# Run the cross-validated code as a default
-      # Check for user-specified number of folds
-      if(is.null(NFOLDS) == FALSE & is.null(foldid) == TRUE){
+      # Execute if no user specific foldid
+      if(is.null(foldid)){
           message(paste("User-supplied number of folds given by 'NFOLDS' = ",
                         NFOLDS," is used to create fold vector."))
-          if(obs_N %% NFOLDS > 0){ # If not divisible fill first folds with one leftover
-            foldid <- c(rep(1:(obs_N %% NFOLDS), each = ((floor(obs_N/NFOLDS)+1) * obs_T)),
-                          rep((obs_N %% NFOLDS + 1):NFOLDS, each = floor(obs_N/NFOLDS)*obs_T))
-          } else{
-            foldid <- rep(1:NFOLDS, each =  (obs_N/NFOLDS * obs_T))
+          if(obs_N %% NFOLDS > 0 & obs_N > NFOLDS){ # If not divisible fill first folds with one leftover
+            foldid <- c(rep(1:(obs_N %% NFOLDS),
+                            each = ((floor(obs_N/NFOLDS)+1) * obs_T)),
+                        rep((obs_N %% NFOLDS + 1):NFOLDS,
+                            each = floor(obs_N/NFOLDS)*obs_T))
+
+            message("Fold assignment based on NFOLDS with modulo")
+
+          }else{
+            if(obs_N > NFOLDS){# If obs_N < NFOLDS use leave one out cv
+              foldid <- rep(1:NFOLDS, each =   (obs_N/NFOLDS * obs_T))
+
+              message("Fold assignment based on NFOLDS")
+            }
+            else{
+              foldid <- rep(1:obs_N, each = obs_T)
+
+              message("Leave one out cv used.")
+            }
           }
 
-          fit_Lasso <- glmnet::cv.glmnet(x = X_hat, y = Y_hat, nfolds = NFOLDS,
+          fit_Lasso <- glmnet::cv.glmnet(x = X_hat, y = Y_hat,
                                             foldid = foldid, family = "gaussian",
                                             alpha = 1, intercept = FALSE)
 
           coefs <- stats::coef(fit_Lasso, s = "lambda.min")[-1]
-          Lambda_CV  <- fit_Lasso.cv$lambda.min
+          Lambda_CV  <- fit_Lasso$lambda.min
 
           results <- list(coefs = coefs, K_hat = K_hat, Lambda = Lambda_CV)
-      }
 
-      # Check if there is user-specified set of folds
-      } else if(is.null(NFOLDS) == FALSE & is.null(foldid) == FALSE){
-          fit_Lasso <- glmnet::cv.glmnet(x = X_hat, y = Y_hat, nfolds = NFOLDS,
+
+      # Execute if there is user-specified set of folds
+      }else{
+          fit_Lasso <- glmnet::cv.glmnet(x = X_hat, y = Y_hat,
                                             foldid = foldid, family = "gaussian",
                                             alpha = 1, intercept = FALSE)
           coefs <- stats::coef(fit_Lasso, s = "lambda.min")[-1]
-          Lambda_CV  <- fit_Lasso.cv$lambda.min
+          Lambda_CV  <- fit_Lasso$lambda.min
+
           message("User specified folds for CV selected.")
+
           results <- list(coefs = coefs, K_hat = K_hat, Lambda = Lambda_CV)
 
-     } else{ # Neither specified NFOLDS nor foldid
-      if(obs_N %% 10 > 0){ # If not divisible fill first folds with one leftover
-         foldid <- c(rep(1:(obs_N %% 10), each = ((floor(obs_N/10)+1) * obs_T)),
-                       rep((obs_N %% 10 + 1):10, each = floor(obs_N/10)*obs_T))
-      } else{
-        foldid <- rep(1:10, each =  (obs_N/10 * obs_T))
-      }
-
-       fit_Lasso <- glmnet::cv.glmnet(x = X_hat, y = Y_hat, family = "gaussian",
-                                         foldid = foldid, alpha = 1,
-                                         intercept = FALSE)
-       coefs <- stats::coef(fit_Lasso, s = "lambda.min")[-1]
-       Lambda_CV  <- fit_Lasso.cv$lambda.min
-       message("10 Fold CV as explained in paper.")
-       results <- list(coefs = coefs, K_hat = K_hat, Lambda = Lambda_CV)
      }
-  }# Close the variant == "Lasso" block
+  }
+
+}# Close the variant == "Lasso" block
+
 
  # Return the estimation results
   return(results)
+
 }# Close the estimation function
 
 

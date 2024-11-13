@@ -9,8 +9,8 @@ hdcce_inference(
   obs_N,
   obs_T,
   TRUNC = 0.01,
-  nFactors = NULL,
-  nFolds = NULL,
+  NFACTORS = NULL,
+  NFOLDS = 10,
   foldid = NULL,
   COEF_INDEX,
   alpha = c(0.01, 0.05, 0.1)
@@ -22,11 +22,18 @@ the dependent variables and data$x the regressors. Both are sorted such
 that first T observations are those for unit 1, followed by the T
 observations for unit 2, etc.}
 
-\item{obs_N, obs_T}{The number of cross-section units (obs_N) and (obs_T) in
-the data.}
+\item{obs_N, obs_T}{The number of cross-section units (obs_N) and time series
+length (obs_T) in the data.}
 
 \item{TRUNC}{The truncation parameter tau used to estimate the number of
 factors. Default is 0.01.}
+
+\item{NFACTORS}{Allows to set the number of factors use in estimation.
+Default is NULL so that the data driven choice with TRUNC = 0.01 is used.}
+
+\item{NFOLDS}{Specifies the number of folds to use when using cross-validation
+to select the lasso penalty based on cv.glmnet. Default is 10.
+Fold size can vary by one if obs_N is not divisible by NFOLDS.}
 
 \item{foldid}{Integer vector (obs_N*obs_T - dimensional) containing a label
 for each sample to determine its fold for CV.}
@@ -34,13 +41,6 @@ for each sample to determine its fold for CV.}
 \item{COEF_INDEX}{Index of regressor to be tested.}
 
 \item{alpha}{Vector containing significance levels.}
-
-\item{NFACTORS}{Allows to set the number of factors use in estimation.
-Default is NULL so that the data driven choice with TRUNC=0.01 is used.}
-
-\item{NFOLDS}{Specify the number of folds to use when using cross-validation
-to select lasso penalty based on cv.glmnet. Default is the default in
-cv.glmnet, which is 10.}
 }
 \value{
 The function returns the following:
@@ -48,7 +48,8 @@ The function returns the following:
  \describe{
   \item{$coef_despar}{Desparsified lasso estimate.}
   \item{$Avar}{Asymptotic variance of desparsified lasso.}
-  \item{$conf_bands}{Symmetric confidence bands for given alpha.}
+  \item{$confidence_band}{Symmetric confidence interval (lower and upper interval
+  value) for given alpha.}
   \item{$var_est_Lasso}{Estimated variance of idiosyncratic regression error.}
   }
 }
@@ -61,14 +62,27 @@ Fixed Effects".
 }
 \examples{
 # Load the data set
-data("data_example")
+data("data_inference")
 
 # Set the dimensions of the data
 obs_N <- 50
 obs_T <- 50
 
-# Do the estimation
-estimate_model <- ???
+# signal = 1,2,3 corresponds to c** = 0, 0.1, 0.2
+signal <- 1
+
+# Use correct column of Y
+data_inference <- list(x = data_inference$x, y = data_inference$y[,signal])
+
+# Regressor to be tested
+COEF_INDEX <- 1
+
+# Inference example
+inference_model <- hdcce_inference(data_inference, obs_N, obs_T, TRUNC = 0.01,
+ NFACTORS = NULL, NFOLDS = 10, foldid = NULL, COEF_INDEX,
+ alpha = c(0.01, 0.05, 0.1))
+
+print(inference_model$confidence_band)
 
 }
 \references{

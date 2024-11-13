@@ -12,8 +12,8 @@ hdcce_estimator(
   NFACTORS = NULL,
   variant = "Lasso",
   lambda = NULL,
-  NFOLDS = NULL,
-  fold_vec = NULL,
+  NFOLDS = 10,
+  foldid = NULL,
   scree_plot = TRUE
 )
 }
@@ -23,52 +23,49 @@ the dependent variables and data$x the regressors. Both are sorted such
 that first T observations are those for unit 1, followed by the T
 observations for unit 2, etc.}
 
-\item{obs_N, obs_T}{The number of cross-section units (obs_N) and (obs_T) in
-the data.}
+\item{obs_N, obs_T}{The number of cross-section units (obs_N) and time series
+length (obs_T) in the data.}
 
 \item{TRUNC}{The truncation parameter tau used to estimate the number of
 factors. Default is 0.01.}
 
-\item{NFACTORS}{Allows to set the number of factors use in estimation.
-Default is NULL so that the data driven choice with TRUNC=0.01 is used.}
+\item{NFACTORS}{Allows to set the number of factors used in estimation.
+Default is NULL so that the data driven choice with TRUNC = 0.01 is used.}
 
 \item{variant}{Choose whether to use the lasso based estimator
-(variant="Lasso") or the least squares variant (variant="LS"). Must be
-specified.}
+(variant = "Lasso" (Default)) or the least squares variant (variant = "LS").}
 
 \item{lambda}{User specified lambda grid.}
 
-\item{NFOLDS}{Specify the number of folds to use when using cross-validation
-to select lasso penalty based on cv.glmnet. Default is the default in
-cv.glmnet, which is 10.}
+\item{NFOLDS}{The number of folds (partitioned along cross-section n) used for
+cross-validation (as described in the paper). Default is NFOLDS = 10.
+Fold size can vary by one if obs_N is not divisible by NFOLDS.}
 
-\item{fold_vec}{Integer vector (obs_N*obs_T - dimensional) containing a label
+\item{foldid}{Integer vector (obs_N*obs_T - dimensional) containing a label
 for each sample to determine its fold for CV.}
 
 \item{scree_plot}{Logical variable to indicate whether a scree plot of the
 eigendecomposition of \eqn{\Sigma} should be shown. The default is TRUE.}
 }
 \value{
-In general the function returns the estimated coefficients, the
+The function returns the estimated coefficients, the
 number of estimated factors and the lasso penalty parameter. More
 specifically:
 \itemize{
-\item Unless penalty_choice = "None", the function returns a list with
+\item If a lambda sequence was supplied or variant = "LS", then the function
+returns a list with
 \describe{
   \item{$coefs}{The coefficient estimates.}
   \item{$K_hat}{The estimated number of factors. If NFACTORS was
   set by user then this will be returned.}
-  \item{$Lambda}{The data driven lasso penalty choice. If variant ="LS",
-  it is non-existent.}
   }
-\item If the option lambda = "lambda" was set, then the function
+\item If no lambda sequence was supplied and variant = "Lasso", then the function
 returns a list with
  \describe{
-  \item{$coefs}{The coefficient estimates.}
+  \item{$coefs}{The estimated coefficients.}
   \item{$K_hat}{The estimated number of factors. If NFACTORS was
   set by user then this will be returned.}
-  \item{$Lambda}{The values of the lasso penalty parameters used. If
-  variant = "LS", it is non-existent.}
+  \item{$Lambda}{The lambda_min calculated by cross-validation.}
   }
 }
 }
@@ -80,17 +77,18 @@ Fixed Effects".
 }
 \examples{
 # Load the data set
-data("data_example")
+data("data_estimation")
 
 # Set the dimensions of the data
 obs_N <- 50
 obs_T <- 50
 
 # Do the estimation
-estimate_model <- hdcce_estimator(data = data_example, obs_N = obs_N,
-                      obs_T = obs_T, TRUNC = 0.1, NFACTORS = NULL,
-                      variant = "Lasso", lambda = NULL, NFOLDS = NULL,
-                      fold_vec = NULL, scree_plot = TRUE)
+estimate_model <- hdcce_estimator(data = data_estimation, obs_N = obs_N,
+                      obs_T = obs_T, TRUNC = 0.01, NFACTORS = NULL,
+                      variant = "Lasso", lambda = NULL, NFOLDS = 10,
+                      foldid = NULL, scree_plot = TRUE)
+print(estimate_model$coefs[c(1:10)])
 
 }
 \references{
