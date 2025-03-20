@@ -20,16 +20,16 @@
 #'   Fold size can vary by one if obs_N is not divisible by NFOLDS.
 #'@param foldid Integer vector (obs_N*obs_T - dimensional) containing a label
 #'   for each sample to determine its fold for CV.
-#'@param COEF_INDEX Index of regressor to be tested.
+#'@param COEF_INDEX_VEC Indeces of regressors to be tested.
 #'@param alpha Vector containing significance levels.
-#' @return The function returns the following:
+#' @return The function returns a list for where for each COEF_INDEX_VEC it contains
+#' the following:
 #' \itemize{
 #'  \describe{
 #'   \item{$coef_despar}{Desparsified lasso estimate.}
 #'   \item{$Avar}{Asymptotic variance of desparsified lasso.}
 #'   \item{$confidence_band}{Symmetric confidence interval (lower and upper interval
 #'   value) for given alpha.}
-#'   \item{$var_est_Lasso}{Estimated variance of idiosyncratic regression error.}
 #'   }
 #' }
 #' @examples
@@ -47,11 +47,11 @@
 #' data_inference <- list(x = data_inference$x, y = data_inference$y[,signal])
 #'
 #' # Regressor to be tested
-#' COEF_INDEX <- 1
+#' COEF_INDEX_VEC <- 1
 #'
 #' # Inference example
 #' inference_model <- hdcce_inference(data_inference, obs_N, obs_T, TRUNC = 0.01,
-#'  NFACTORS = NULL, NFOLDS = 10, foldid = NULL, COEF_INDEX,
+#'  NFACTORS = NULL, NFOLDS = 10, foldid = NULL, COEF_INDEX_VEC,
 #'  alpha = c(0.01, 0.05, 0.1))
 #'
 #' print(inference_model$confidence_band)
@@ -65,7 +65,7 @@
 
 #' @export
 hdcce_inference <- function(data, obs_N, obs_T, TRUNC = 0.01, NFACTORS = NULL,
-                            NFOLDS = 10, foldid = NULL, COEF_INDEX,
+                            NFOLDS = 10, foldid = NULL, COEF_INDEX_VEC,
                             alpha = c(0.01, 0.05, 0.1)){
 
 
@@ -95,7 +95,7 @@ hdcce_inference <- function(data, obs_N, obs_T, TRUNC = 0.01, NFACTORS = NULL,
     }
 
 
-  # Pull out the data
+  # Access the data
   X_data <- data$x
   Y_data <- data$y
   p <- dim(X_data)[2]
@@ -117,6 +117,38 @@ hdcce_inference <- function(data, obs_N, obs_T, TRUNC = 0.01, NFACTORS = NULL,
       stop("Supplied number NFACTORS must be integer valued.")
     }
   }
+
+  if(length(COEF_INDEX_VEC > 1)){
+  Results <- vector(mode = 'list', length = length(COEF_INDEX_VEC))
+  }
+
+  #============================================================================#
+  #   Estimation of number of factors K_hat (UPDATED: WITH MAIN REGRESSION)
+  #============================================================================#
+  # Cross-sectional averages of the regressors
+  X_bar <- matrix(NA, ncol = p, nrow = obs_T)
+  for(t in 1:obs_T){
+    indices <- seq(t, obs_N * obs_T, by = obs_T)
+    X_bar[t,] <- colMeans(X_data[indices,])
+  }
+
+  # Empirical covariance matrix and eigenstructure without the "j-th" regressor
+  Cov_X_bar <- 1/obs_T * t(X_bar) %*% X_bar
+  Cov_X_bar_eigen <- eigen(Cov_X_bar, symmetric = TRUE)
+
+  # Normalize the eigenvalues by the largest one
+  eigen_values <- Cov_X_bar_eigen$values/Cov_X_bar_eigen$values[1]
+
+  if(!is.null(NFACTORS)){
+    K_hat <- NFACTORS
+  }else{
+    K_hat <- sum((TRUNC < eigen_values))
+    message(paste("Number of factors estimated given by 'K_hat' =", K_hat))
+  }
+
+  # APPEND RESULTS FOR EACH COEF INDEX TO THE RESULT LIST
+  coef_counter <- 1
+  for (COEF_INDEX in COEF_INDEX_VEC) {
 
   # Interception for COEF_INDEX
   if(COEF_INDEX > p | COEF_INDEX < 1 | floor(COEF_INDEX) != COEF_INDEX ){
@@ -143,19 +175,6 @@ hdcce_inference <- function(data, obs_N, obs_T, TRUNC = 0.01, NFACTORS = NULL,
   Cov_X_bar_eigen <- eigen(Cov_X_bar, symmetric = TRUE)
 
 
-  #============================================================================#
-  # Step 1 b):  Estimation of number of factors
-  #============================================================================#
-
-  # Normalize the eigenvalues by the largest one
-  eigen_values <- Cov_X_bar_eigen$values/Cov_X_bar_eigen$values[1]
-
-  if(!is.null(NFACTORS)){
-    K_hat <- NFACTORS
-  }else{
-    K_hat <- sum((TRUNC < eigen_values))
-    message(paste("Number of factors estimated given by 'K_hat' =", K_hat))
-  }
 
   #============================================================================#
   # Step 1 c): Computation of projection matrix
@@ -234,7 +253,7 @@ hdcce_inference <- function(data, obs_N, obs_T, TRUNC = 0.01, NFACTORS = NULL,
   yhat_Lasso <- stats::predict(fit_Lasso, newx = X_tilde,
                         type = "response", s = "lambda.min")
   resid_Lasso <- Y_tilde - yhat_Lasso
-  var_est_Lasso <- obs_T/(obs_T - K_hat) * mean(resid_Lasso^2)
+
 
   #============================================================================#
   # Step 2 b): Run the nodewise Lasso estimation on transformed data
@@ -307,16 +326,31 @@ hdcce_inference <- function(data, obs_N, obs_T, TRUNC = 0.01, NFACTORS = NULL,
 
   # Calculate the "scaled asymptotic variance"
   var_scaled <- rep(0, len = kappa_grid_len)
-  for(i in 1:kappa_grid_len){
 
-    # Nodewise lasso residuals
-    yhat_node_Lasso <- stats::predict(fit_node_Lasso, newx = X_tilde[,-COEF_INDEX],
-                               type = "response", s = kappa_grid[i])
-    resid_node_Lasso <- X_tilde[, COEF_INDEX] - yhat_node_Lasso
-
-    # Scaled asymptotic variance
-    var_scaled[i] <-  t(resid_node_Lasso) %*% resid_node_Lasso / (t(X_tilde[,COEF_INDEX]) %*% resid_node_Lasso)^2
+  # Compute Bartlett-kernel weight matrix W
+  h_B <- 10 # Default Kernel Bandwidth
+  W <- matrix(0, nrow = obs_T, ncol = obs_T)
+  for (t_1 in 1:obs_T) {
+    for (t_2 in 1:obs_T) {
+      if(abs((t_1-t_2)/h_B) <= 1){
+        W[t_1,t_2] <- 1 - abs((t_1-t_2)/h_B)
+      }
+    }
   }
+
+ # This is the asymptotic variance estimator under heteroscedasity
+    for(k in 1:kappa_grid_len){
+      yhat_node_Lasso <- stats::predict(fit_node_Lasso, newx = X_tilde[,-COEF_INDEX],
+                                        type = "response", s = kappa_grid[k])
+      resid_node_Lasso <- X_tilde[, COEF_INDEX] - yhat_node_Lasso
+
+      tmp <- numeric(obs_N)
+      for (i in 1:obs_N) {
+        resid_prod_components <- resid_node_Lasso[((i-1)*obs_T+1):(i*obs_T)]*resid_Lasso[((i-1)*obs_T+1):(i*obs_T)]
+        tmp[i] <- t(resid_prod_components) %*% W %*% resid_prod_components
+      }
+      var_scaled[k] <-  (1/(t(X_tilde[,COEF_INDEX]) %*% resid_node_Lasso)^2)*sum(tmp)
+    }
 
 
   # 25% increase of the scaled variance for truncation
@@ -338,7 +372,7 @@ hdcce_inference <- function(data, obs_N, obs_T, TRUNC = 0.01, NFACTORS = NULL,
   #============================================================================#
   # Step 3 b): Construction of the de-sparsified estimator
   #============================================================================#
-
+  # Nodewise lasso residuals
   yhat_node_Lasso <- stats::predict(fit_node_Lasso, newx = X_tilde[,-COEF_INDEX],
                              type = "response", s = kappa_grid[kappa_idx])
   resid_node_Lasso <- X_tilde[, COEF_INDEX] - yhat_node_Lasso
@@ -346,16 +380,28 @@ hdcce_inference <- function(data, obs_N, obs_T, TRUNC = 0.01, NFACTORS = NULL,
   despar_beta <- coefs_Lasso[COEF_INDEX] + t(resid_node_Lasso) %*% resid_Lasso / t(resid_node_Lasso) %*% X_tilde[, COEF_INDEX]
 
   # Collect results
-  Avar <- sqrt(var_est_Lasso * var_scaled[kappa_idx])
+  Avar <- sqrt(var_scaled[kappa_idx])
 
   conf_band_min <- rep(despar_beta, length(alpha)) + Avar * qnorm(alpha/2)
   conf_band_max <- rep(despar_beta, length(alpha)) + Avar * qnorm(1-alpha/2)
 
   confidence_band <- cbind(conf_band_min, conf_band_max)
 
+  if(length(COEF_INDEX_VEC) > 1){
+  Results[[coef_counter]] <- list(coef_despar = despar_beta, Avar = Avar,
+                               confidence_band = confidence_band)
+  }
+  else{
+    Results <- list(coef_despar = despar_beta, Avar = Avar,
+                    confidence_band = confidence_band)
+  }
 
-  return(list(coef_despar = despar_beta, Avar = Avar,
-              confidence_band = confidence_band, var_est = var_est_Lasso))
+  coef_counter <- coef_counter+1
+  }
+
+
+
+  return(Results)
 }
 
 

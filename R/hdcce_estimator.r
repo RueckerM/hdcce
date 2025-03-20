@@ -218,7 +218,7 @@ hdcce_estimator <- function(data, obs_N, obs_T, TRUNC = 0.01,
     # Execute if user specified lambda grid is provided
     if(is.null(lambda) == FALSE){
           fit_Lasso <- glmnet::glmnet(x = X_hat, y = Y_hat, family = "gaussian",
-                                      alpha = 1, lambda = lambda,
+                                      alpha = 1, lambda = lambda/2,
                                       intercept = FALSE)
           message("User specified lambda grid selected.")
           results <- list(coefs = fit_Lasso$beta, K_hat = K_hat)

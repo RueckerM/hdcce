@@ -12,7 +12,7 @@ hdcce_inference(
   NFACTORS = NULL,
   NFOLDS = 10,
   foldid = NULL,
-  COEF_INDEX,
+  COEF_INDEX_VEC,
   alpha = c(0.01, 0.05, 0.1)
 )
 }
@@ -38,19 +38,19 @@ Fold size can vary by one if obs_N is not divisible by NFOLDS.}
 \item{foldid}{Integer vector (obs_N*obs_T - dimensional) containing a label
 for each sample to determine its fold for CV.}
 
-\item{COEF_INDEX}{Index of regressor to be tested.}
+\item{COEF_INDEX_VEC}{Indeces of regressors to be tested.}
 
 \item{alpha}{Vector containing significance levels.}
 }
 \value{
-The function returns the following:
+The function returns a list for where for each COEF_INDEX_VEC it contains
+the following:
 \itemize{
  \describe{
   \item{$coef_despar}{Desparsified lasso estimate.}
   \item{$Avar}{Asymptotic variance of desparsified lasso.}
   \item{$confidence_band}{Symmetric confidence interval (lower and upper interval
   value) for given alpha.}
-  \item{$var_est_Lasso}{Estimated variance of idiosyncratic regression error.}
   }
 }
 }
@@ -75,11 +75,11 @@ signal <- 1
 data_inference <- list(x = data_inference$x, y = data_inference$y[,signal])
 
 # Regressor to be tested
-COEF_INDEX <- 1
+COEF_INDEX_VEC <- 1
 
 # Inference example
 inference_model <- hdcce_inference(data_inference, obs_N, obs_T, TRUNC = 0.01,
- NFACTORS = NULL, NFOLDS = 10, foldid = NULL, COEF_INDEX,
+ NFACTORS = NULL, NFOLDS = 10, foldid = NULL, COEF_INDEX_VEC,
  alpha = c(0.01, 0.05, 0.1))
 
 print(inference_model$confidence_band)
