@@ -14,7 +14,8 @@ hdcce_estimator(
   lambda = NULL,
   NFOLDS = 10,
   foldid = NULL,
-  scree_plot = TRUE
+  scree_plot = TRUE,
+  standardize = TRUE
 )
 }
 \arguments{
@@ -46,6 +47,9 @@ for each sample to determine its fold for CV.}
 
 \item{scree_plot}{Logical variable to indicate whether a scree plot of the
 eigendecomposition of \eqn{\Sigma} should be shown. The default is TRUE.}
+
+\item{standardize}{Logical variable to indicate whether glmnet is called
+with the standardized projected data. The default is TRUE.}
 }
 \value{
 The function returns the estimated coefficients, the

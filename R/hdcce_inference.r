@@ -22,6 +22,11 @@
 #'   for each sample to determine its fold for CV.
 #'@param COEF_INDEX_VEC Indeces of regressors to be tested.
 #'@param alpha Vector containing significance levels.
+#'@param HAC Integer = 1,2,3. 1 employ homoscedastic no serial correlation,
+#'           2 heteroscedastic no serial correlation and 3 HAC variance
+#'           estimator. 2 is set as default.
+#' @param standardize Logical variable to indicate whether glmnet is called
+#'   with the standardized projected data. The default is TRUE.
 #' @return The function returns a list for where for each COEF_INDEX_VEC it contains
 #' the following:
 #' \itemize{
@@ -66,7 +71,8 @@
 #' @export
 hdcce_inference <- function(data, obs_N, obs_T, TRUNC = 0.01, NFACTORS = NULL,
                             NFOLDS = 10, foldid = NULL, COEF_INDEX_VEC,
-                            alpha = c(0.01, 0.05, 0.1)){
+                            alpha = c(0.01, 0.05, 0.1), HAC = 2,
+                            standardize = TRUE){
 
 
 
@@ -123,7 +129,7 @@ hdcce_inference <- function(data, obs_N, obs_T, TRUNC = 0.01, NFACTORS = NULL,
   }
 
   #============================================================================#
-  #   Estimation of number of factors K_hat (UPDATED: WITH MAIN REGRESSION)
+  #   Estimation of number of factors K_hat (UPDATED: ONCE WITH MAIN REGRESSION)
   #============================================================================#
   # Cross-sectional averages of the regressors
   X_bar <- matrix(NA, ncol = p, nrow = obs_T)
@@ -230,7 +236,8 @@ hdcce_inference <- function(data, obs_N, obs_T, TRUNC = 0.01, NFACTORS = NULL,
 
     fit_Lasso <- glmnet::cv.glmnet(x = X_tilde, y = Y_tilde,
                                         foldid = fold_vec, family = "gaussian",
-                                        alpha = 1, intercept = FALSE)
+                                        alpha = 1, intercept = FALSE,
+                                        standardize = standardize)
 
     coefs_Lasso <- stats::coef(fit_Lasso, s = "lambda.min")[-1]
     lambda_cv  <- fit_Lasso$lambda.min
@@ -249,7 +256,7 @@ hdcce_inference <- function(data, obs_N, obs_T, TRUNC = 0.01, NFACTORS = NULL,
 
 
 
-  # Variance estimate using cross-validated penalty
+# Prediction Main regression and residuals
   yhat_Lasso <- stats::predict(fit_Lasso, newx = X_tilde,
                         type = "response", s = "lambda.min")
   resid_Lasso <- Y_tilde - yhat_Lasso
@@ -286,7 +293,8 @@ hdcce_inference <- function(data, obs_N, obs_T, TRUNC = 0.01, NFACTORS = NULL,
     }
     fit_node_Lasso <- glmnet::cv.glmnet(x = X_tilde[,-COEF_INDEX], y = X_tilde[,COEF_INDEX],
                                    foldid = fold_vec, family = "gaussian",
-                                   alpha = 1, intercept = FALSE)
+                                   alpha = 1, intercept = FALSE,
+                                   standardize = standardize)
 
     coefs_node_Lasso <- stats::coef(fit_node_Lasso, s = "lambda.min")[-1]
     kappa_cv  <- fit_node_Lasso$lambda.min
@@ -296,7 +304,8 @@ hdcce_inference <- function(data, obs_N, obs_T, TRUNC = 0.01, NFACTORS = NULL,
   }else{# Execute if there is user-specified set of folds
     fit_node_Lasso <- glmnet::cv.glmnet(x = X_tilde[,-COEF_INDEX], y = X_tilde[,COEF_INDEX],
                                    foldid = foldid, family = "gaussian",
-                                   alpha = 1, intercept = FALSE)
+                                   alpha = 1, intercept = FALSE,
+                                   standardize = standardize)
 
     coefs_node_Lasso <- stats::coef(fit_node_Lasso, s = "lambda.min")[-1]
     kappa_cv  <- fit_node_Lasso$lambda.min
@@ -327,18 +336,40 @@ hdcce_inference <- function(data, obs_N, obs_T, TRUNC = 0.01, NFACTORS = NULL,
   # Calculate the "scaled asymptotic variance"
   var_scaled <- rep(0, len = kappa_grid_len)
 
-  # Compute Bartlett-kernel weight matrix W
-  h_B <- 10 # Default Kernel Bandwidth
-  W <- matrix(0, nrow = obs_T, ncol = obs_T)
-  for (t_1 in 1:obs_T) {
-    for (t_2 in 1:obs_T) {
-      if(abs((t_1-t_2)/h_B) <= 1){
-        W[t_1,t_2] <- 1 - abs((t_1-t_2)/h_B)
-      }
+  # Homoscedastic estimator
+  if(HAC == 1){
+    for(k in 1:kappa_grid_len){
+      yhat_node_Lasso <- stats::predict(fit_node_Lasso, newx = X_tilde[,-COEF_INDEX],
+                                        type = "response", s = kappa_grid[k])
+      resid_node_Lasso <- X_tilde[, COEF_INDEX] - yhat_node_Lasso
+
+      sigma_eps_estimate <-(1/(obs_N*obs_T))*(obs_T/(obs_T-K_hat))*sum(resid_Lasso^2)
+
+      var_scaled[k] <-  (1/(t(X_tilde[,COEF_INDEX]) %*% resid_node_Lasso)^2)*sigma_eps_estimate*sum(resid_node_Lasso^2)
     }
   }
 
- # This is the asymptotic variance estimator under heteroscedasity
+
+  # Heteroscedastic robust estimator
+  if(HAC == 2){
+    for(k in 1:kappa_grid_len){
+      yhat_node_Lasso <- stats::predict(fit_node_Lasso, newx = X_tilde[,-COEF_INDEX],
+                                        type = "response", s = kappa_grid[k])
+      resid_node_Lasso <- X_tilde[, COEF_INDEX] - yhat_node_Lasso
+
+      tmp <- numeric(obs_N)
+      for (i in 1:obs_N) {
+        sigma_eps_estimate <-(1/obs_T)*(obs_T/(obs_T-K_hat))*sum(resid_Lasso[((i-1)*obs_T+1):(i*obs_T)]^2)
+
+        tmp[i] <- sigma_eps_estimate*sum(resid_node_Lasso[((i-1)*obs_T+1):(i*obs_T)]^2)
+      }
+      var_scaled[k] <-  (1/(t(X_tilde[,COEF_INDEX]) %*% resid_node_Lasso)^2)*sum(tmp)
+    }
+  }
+
+  # HAC variance estimator
+  if(HAC == 3){
+    W <- matrix(1, ncol = obs_T, obs_T)
     for(k in 1:kappa_grid_len){
       yhat_node_Lasso <- stats::predict(fit_node_Lasso, newx = X_tilde[,-COEF_INDEX],
                                         type = "response", s = kappa_grid[k])
@@ -351,6 +382,8 @@ hdcce_inference <- function(data, obs_N, obs_T, TRUNC = 0.01, NFACTORS = NULL,
       }
       var_scaled[k] <-  (1/(t(X_tilde[,COEF_INDEX]) %*% resid_node_Lasso)^2)*sum(tmp)
     }
+  }
+
 
 
   # 25% increase of the scaled variance for truncation

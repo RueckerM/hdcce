@@ -25,6 +25,8 @@
 #'   for each sample to determine its fold for CV.
 #' @param scree_plot Logical variable to indicate whether a scree plot of the
 #'   eigendecomposition of \eqn{\Sigma} should be shown. The default is TRUE.
+#' @param standardize Logical variable to indicate whether glmnet is called
+#'   with the standardized projected data. The default is TRUE.
 #' @return The function returns the estimated coefficients, the
 #' number of estimated factors and the lasso penalty parameter. More
 #' specifically:
@@ -70,7 +72,8 @@
 hdcce_estimator <- function(data, obs_N, obs_T, TRUNC = 0.01,
                                NFACTORS = NULL, variant = "Lasso",
                                lambda = NULL, NFOLDS = 10,
-                               foldid = NULL, scree_plot = TRUE){
+                               foldid = NULL, scree_plot = TRUE,
+                               standardize = TRUE){
 # Initial Checks
 #--------------------------------------------------------------------------
 
@@ -219,7 +222,9 @@ hdcce_estimator <- function(data, obs_N, obs_T, TRUNC = 0.01,
     if(is.null(lambda) == FALSE){
           fit_Lasso <- glmnet::glmnet(x = X_hat, y = Y_hat, family = "gaussian",
                                       alpha = 1, lambda = lambda/2,
-                                      intercept = FALSE)
+                                      intercept = FALSE,
+                                      standardize = standardize)
+
           message("User specified lambda grid selected.")
           results <- list(coefs = fit_Lasso$beta, K_hat = K_hat)
 
@@ -251,7 +256,8 @@ hdcce_estimator <- function(data, obs_N, obs_T, TRUNC = 0.01,
 
           fit_Lasso <- glmnet::cv.glmnet(x = X_hat, y = Y_hat,
                                             foldid = foldid, family = "gaussian",
-                                            alpha = 1, intercept = FALSE)
+                                            alpha = 1, intercept = FALSE,
+                                            standardize = standardize)
 
           coefs <- stats::coef(fit_Lasso, s = "lambda.min")[-1]
           Lambda_CV  <- fit_Lasso$lambda.min
@@ -263,7 +269,8 @@ hdcce_estimator <- function(data, obs_N, obs_T, TRUNC = 0.01,
       }else{
           fit_Lasso <- glmnet::cv.glmnet(x = X_hat, y = Y_hat,
                                             foldid = foldid, family = "gaussian",
-                                            alpha = 1, intercept = FALSE)
+                                            alpha = 1, intercept = FALSE,
+                                            standardize = standardize)
           coefs <- stats::coef(fit_Lasso, s = "lambda.min")[-1]
           Lambda_CV  <- fit_Lasso$lambda.min
 

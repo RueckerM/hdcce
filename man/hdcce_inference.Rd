@@ -13,7 +13,9 @@ hdcce_inference(
   NFOLDS = 10,
   foldid = NULL,
   COEF_INDEX_VEC,
-  alpha = c(0.01, 0.05, 0.1)
+  alpha = c(0.01, 0.05, 0.1),
+  HAC = 2,
+  standardize = TRUE
 )
 }
 \arguments{
@@ -41,6 +43,13 @@ for each sample to determine its fold for CV.}
 \item{COEF_INDEX_VEC}{Indeces of regressors to be tested.}
 
 \item{alpha}{Vector containing significance levels.}
+
+\item{HAC}{Integer = 1,2,3. 1 employ homoscedastic no serial correlation,
+2 heteroscedastic no serial correlation and 3 HAC variance
+estimator. 2 is set as default.}
+
+\item{standardize}{Logical variable to indicate whether glmnet is called
+with the standardized projected data. The default is TRUE.}
 }
 \value{
 The function returns a list for where for each COEF_INDEX_VEC it contains
