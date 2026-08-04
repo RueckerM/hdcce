@@ -14,7 +14,7 @@ hdcce_estimator(
   lambda = NULL,
   NFOLDS = 10,
   foldid = NULL,
-  scree_plot = TRUE,
+  scree_plot = FALSE,
   standardize = TRUE
 )
 }
@@ -42,11 +42,11 @@ Default is NULL so that the data driven choice with TRUNC = 0.01 is used.}
 cross-validation (as described in the paper). Default is NFOLDS = 10.
 Fold size can vary by one if obs_N is not divisible by NFOLDS.}
 
-\item{foldid}{Integer vector (obs_N*obs_T - dimensional) containing a label
+\item{foldid}{Integer vector (obs_N * obs_T - dimensional) containing a label
 for each sample to determine its fold for CV.}
 
 \item{scree_plot}{Logical variable to indicate whether a scree plot of the
-eigendecomposition of \eqn{\Sigma} should be shown. The default is TRUE.}
+eigendecomposition of \eqn{\Sigma} should be shown. The default is FALSE.}
 
 \item{standardize}{Logical variable to indicate whether glmnet is called
 with the standardized projected data. The default is TRUE.}
@@ -74,29 +74,30 @@ returns a list with
 }
 }
 \description{
-\code{hdcce_estimator} fits the high-dimensional CCE estimation procedure
-proposed in Linton, 0., Ruecker, M., Vogt, M., Walsh, C. (2024) "Estimation
+\code{hdcce_estimator} fits the high-dimensional CCE estimator (HD-CCE-estimator)
+proposed in Ruecker, M., Vogt, M., Linton, O., Walsh, C. (2025) "Estimation
 and Inference in High-Dimensional Panel Data Models with Interactive
-Fixed Effects".
+Fixed Effects" \doi{10.3982/QE2308}.
 }
 \examples{
 # Load the data set
 data("data_estimation")
 
 # Set the dimensions of the data
-obs_N <- 50
-obs_T <- 50
+obs_N <- 20
+obs_T <- 20
 
 # Do the estimation
 estimate_model <- hdcce_estimator(data = data_estimation, obs_N = obs_N,
                       obs_T = obs_T, TRUNC = 0.01, NFACTORS = NULL,
                       variant = "Lasso", lambda = NULL, NFOLDS = 10,
-                      foldid = NULL, scree_plot = TRUE)
+                      foldid = NULL, scree_plot = FALSE)
 print(estimate_model$coefs[c(1:10)])
 
 }
 \references{
-Linton, 0., Ruecker, M., Vogt, M., Walsh, C. (2024) "Estimation
-and Inference in High-Dimensional Panel Data Models with Interactive
-Fixed Effects"
+Ruecker, M., Vogt, M., Linton, O. and Walsh, C. (2025).
+  Estimation and inference in high-dimensional panel data models with
+  interactive fixed effects. \emph{Quantitative Economics}, 16(4),
+  1457--1509. \doi{10.3982/QE2308}
 }

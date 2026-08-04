@@ -27,31 +27,30 @@ List containing the balanced panel data for estimation
  observations for unit 2, etc.
 }
 \description{
-\code{generate_data} generates data as in simulation section of Linton, O.,
- Ruecker, M., Vogt, M.,  Walsh, C. (2024) "Estimation and Inference in
- High-Dimensional Panel Data Models with Interactive Fixed Effects".
+\code{generate_data} generates data as in simulation section of Ruecker, M., Vogt, M., Linton, O., Walsh, C. (2025) "Estimation and Inference in
+ High-Dimensional Panel Data Models with Interactive Fixed Effects" \doi{10.3982/QE2308}.
  The example provides the code used to create the data sets
  \bold{data_estimation.rda} and \bold{data_inference.rda} of the package.
 }
 \examples{
-# Simulate an example data set as in Scenario B of the paper with
-# N = 50, T = 50, RHO = 0.25, p = 901
+# Simulate an example data set with
+# N = 20, T = 20, RHO = 0.25, p = 61
 #-----------------------------------------------------------------------------
 
 # Set the parameters
 #-----------------------------------------------------------------------------
 \dontrun{
 # Set the number of cross-sections, time periods
-obs_N  <- 50
-obs_T  <- 50
-p <- 901
+obs_N  <- 20
+obs_T  <- 20
+p <- 61
 # Specify the pairwise correlation among the regressors
 RHO <- 0.25
 # Specify the mean for the factor loadings
 mu <- c(1, 1, 1, rep(1, (p-1)))
 
 # Simulate the data
-set.seed(2024)
+set.seed(2025)
 data <- generate_data(obs_N = obs_N, obs_T = obs_T, p,  mu = mu,
                              RHO = RHO)
 data_estimation <- data$data_estimation

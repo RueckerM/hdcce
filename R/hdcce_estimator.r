@@ -1,9 +1,9 @@
 #' Estimate HD panels with IFE
 #'
-#' \code{hdcce_estimator} fits the high-dimensional CCE estimation procedure
-#' proposed in Ruecker, M., Vogt, M., Linton, 0., Walsh, C. (2025) "Estimation
+#' \code{hdcce_estimator} fits the high-dimensional CCE estimator (HD-CCE-estimator)
+#' proposed in Ruecker, M., Vogt, M., Linton, O., Walsh, C. (2025) "Estimation
 #' and Inference in High-Dimensional Panel Data Models with Interactive
-#' Fixed Effects".
+#' Fixed Effects" \doi{10.3982/QE2308}.
 #'
 #' @param data List containing the balanced panel data with data$y containing
 #'   the dependent variables and data$x the regressors. Both are sorted such
@@ -21,10 +21,10 @@
 #' @param NFOLDS The number of folds (partitioned along cross-section n) used for
 #'  cross-validation (as described in the paper). Default is NFOLDS = 10.
 #'  Fold size can vary by one if obs_N is not divisible by NFOLDS.
-#'@param foldid Integer vector (obs_N*obs_T - dimensional) containing a label
+#'@param foldid Integer vector (obs_N * obs_T - dimensional) containing a label
 #'   for each sample to determine its fold for CV.
 #' @param scree_plot Logical variable to indicate whether a scree plot of the
-#'   eigendecomposition of \eqn{\Sigma} should be shown. The default is TRUE.
+#'   eigendecomposition of \eqn{\Sigma} should be shown. The default is FALSE.
 #' @param standardize Logical variable to indicate whether glmnet is called
 #'   with the standardized projected data. The default is TRUE.
 #' @return The function returns the estimated coefficients, the
@@ -52,27 +52,27 @@
 #' data("data_estimation")
 #'
 #' # Set the dimensions of the data
-#' obs_N <- 50
-#' obs_T <- 50
+#' obs_N <- 20
+#' obs_T <- 20
 #'
 #' # Do the estimation
 #' estimate_model <- hdcce_estimator(data = data_estimation, obs_N = obs_N,
 #'                       obs_T = obs_T, TRUNC = 0.01, NFACTORS = NULL,
 #'                       variant = "Lasso", lambda = NULL, NFOLDS = 10,
-#'                       foldid = NULL, scree_plot = TRUE)
+#'                       foldid = NULL, scree_plot = FALSE)
 #' print(estimate_model$coefs[c(1:10)])
 #'
-#' @references  Ruecker, M., Vogt, M., Linton, 0., Walsh, C. (2025) "Estimation
-#' and Inference in High-Dimensional Panel Data Models with Interactive
-#' Fixed Effects"
-
+#' @references  Ruecker, M., Vogt, M., Linton, O. and Walsh, C. (2025).
+#'   Estimation and inference in high-dimensional panel data models with
+#'   interactive fixed effects. \emph{Quantitative Economics}, 16(4),
+#'   1457--1509. \doi{10.3982/QE2308}
 
 
 #' @export
 hdcce_estimator <- function(data, obs_N, obs_T, TRUNC = 0.01,
                                NFACTORS = NULL, variant = "Lasso",
                                lambda = NULL, NFOLDS = 10,
-                               foldid = NULL, scree_plot = TRUE,
+                               foldid = NULL, scree_plot = FALSE,
                                standardize = TRUE){
 # Initial Checks
 #--------------------------------------------------------------------------
@@ -82,7 +82,7 @@ hdcce_estimator <- function(data, obs_N, obs_T, TRUNC = 0.01,
     stop('Variant must be set to "LS" or "Lasso."')
   }
   # Interception for foldid
-  if(class(foldid) == "numeric"){
+  if(is.numeric(foldid)){
     if(!all(foldid == floor(foldid))){
       stop('Provided vector for CV must contain integers only.')
     }
@@ -154,7 +154,7 @@ hdcce_estimator <- function(data, obs_N, obs_T, TRUNC = 0.01,
   eigen_values <- Cov_X_bar_eigen$values / (Cov_X_bar_eigen$values[1])
 
   # Check for user-specified fixed number of factors
-  if(class(NFACTORS) == "numeric"){
+  if(is.numeric(NFACTORS)){
     if((floor(NFACTORS) == NFACTORS)){
       K_hat <- NFACTORS
       message(paste("User-supplied number of factors given by 'NFACTORS' = ",
@@ -211,7 +211,7 @@ hdcce_estimator <- function(data, obs_N, obs_T, TRUNC = 0.01,
   # Run the LS variant if it was supplied
   if (variant == "LS"){
     # Get least squares estimates
-    coef_est <- lm(Y_hat ~ X_hat - 1)$coefficients
+    coef_est <- stats::lm(Y_hat ~ X_hat - 1)$coefficients
     results <- list(coefs = coef_est, K_hat = K_hat)
     message("LS variant selected.")
   }# Close the variant == "LS" block

@@ -1,9 +1,9 @@
 #' Inference for HD panels with IFE
 #'
-#' \code{hdcce_inference} High-dimensional inference with the desparsified HDCCE
-#' estimator proposed in Ruecker, M., Vogt, M., Linton, 0., Walsh, C. (2025)
+#' \code{hdcce_inference} High-dimensional inference with the desparsified HD-CCE
+#' estimator proposed in Ruecker, M., Vogt, M., Linton, O., Walsh, C. (2025)
 #' "Estimation and Inference in High-Dimensional Panel Data Models with Interactive
-#' Fixed Effects".
+#' Fixed Effects" \doi{10.3982/QE2308}.
 #'
 #' @param data List containing the balanced panel data with data$y containing
 #'   the dependent variables and data$x the regressors. Both are sorted such
@@ -27,23 +27,20 @@
 #'           estimator. 2 is set as default.
 #' @param standardize Logical variable to indicate whether glmnet is called
 #'   with the standardized projected data. The default is TRUE.
-#' @return The function returns a list for where for each COEF_INDEX_VEC it contains
-#' the following:
-#' \itemize{
-#'  \describe{
-#'   \item{$coef_despar}{Desparsified lasso estimate.}
-#'   \item{$Avar}{Asymptotic variance of desparsified lasso.}
-#'   \item{$confidence_band}{Symmetric confidence interval (lower and upper interval
-#'   value) for given alpha.}
-#'   }
+#' @return The function returns, for each entry of COEF_INDEX_VEC, a list with
+#' \describe{
+#'   \item{coef_despar}{Desparsified lasso estimate.}
+#'   \item{se}{Estimated standard error of the desparsified estimator.}
+#'   \item{confidence_band}{Symmetric confidence interval (lower and upper
+#'   interval value) for each significance level in alpha.}
 #' }
 #' @examples
 #' # Load the data set
 #' data("data_inference")
 #'
 #' # Set the dimensions of the data
-#' obs_N <- 50
-#' obs_T <- 50
+#' obs_N <- 20
+#' obs_T <- 20
 #'
 #' # signal = 1,2,3 corresponds to c** = 0, 0.1, 0.2
 #' signal <- 1
@@ -61,9 +58,10 @@
 #'
 #' print(inference_model$confidence_band)
 #'
-#' @references  Ruecker, M., Vogt, M., Linton, 0., Walsh, C. (2025) "Estimation
-#' and Inference in High-Dimensional Panel Data Models with Interactive
-#' Fixed Effects"
+#' @references  Ruecker, M., Vogt, M., Linton, O. and Walsh, C. (2025).
+#'   Estimation and inference in high-dimensional panel data models with
+#'   interactive fixed effects. \emph{Quantitative Economics}, 16(4),
+#'   1457--1509. \doi{10.3982/QE2308}
 
 
 
@@ -79,7 +77,7 @@ hdcce_inference <- function(data, obs_N, obs_T, TRUNC = 0.01, NFACTORS = NULL,
 # Initial Checks
 #--------------------------------------------------------------------------
 # Interception for foldid
-  if(class(foldid) == "numeric"){
+  if(is.numeric(foldid)){
     if(!all(foldid == floor(foldid))){
       stop('Provided vector for CV must contain integers only')
     }
@@ -124,7 +122,7 @@ hdcce_inference <- function(data, obs_N, obs_T, TRUNC = 0.01, NFACTORS = NULL,
     }
   }
 
-  if(length(COEF_INDEX_VEC > 1)){
+  if(length(COEF_INDEX_VEC) > 1){
   Results <- vector(mode = 'list', length = length(COEF_INDEX_VEC))
   }
 
@@ -413,19 +411,19 @@ hdcce_inference <- function(data, obs_N, obs_T, TRUNC = 0.01, NFACTORS = NULL,
   despar_beta <- coefs_Lasso[COEF_INDEX] + t(resid_node_Lasso) %*% resid_Lasso / t(resid_node_Lasso) %*% X_tilde[, COEF_INDEX]
 
   # Collect results
-  Avar <- sqrt(var_scaled[kappa_idx])
+  se <- sqrt(var_scaled[kappa_idx])
 
-  conf_band_min <- rep(despar_beta, length(alpha)) + Avar * qnorm(alpha/2)
-  conf_band_max <- rep(despar_beta, length(alpha)) + Avar * qnorm(1-alpha/2)
+  conf_band_min <- rep(despar_beta, length(alpha)) + se * stats::qnorm(alpha/2)
+  conf_band_max <- rep(despar_beta, length(alpha)) + se * stats::qnorm(1-alpha/2)
 
   confidence_band <- cbind(conf_band_min, conf_band_max)
 
   if(length(COEF_INDEX_VEC) > 1){
-  Results[[coef_counter]] <- list(coef_despar = despar_beta, Avar = Avar,
+  Results[[coef_counter]] <- list(coef_despar = despar_beta, se = se,
                                confidence_band = confidence_band)
   }
   else{
-    Results <- list(coef_despar = despar_beta, Avar = Avar,
+    Results <- list(coef_despar = despar_beta, se = se,
                     confidence_band = confidence_band)
   }
 

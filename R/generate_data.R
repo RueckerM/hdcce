@@ -1,8 +1,7 @@
 #' Generate toy panel data
 #'
-#' \code{generate_data} generates data as in simulation section of Linton, O.,
-#'  Ruecker, M., Vogt, M.,  Walsh, C. (2024) "Estimation and Inference in
-#'  High-Dimensional Panel Data Models with Interactive Fixed Effects".
+#' \code{generate_data} generates data as in simulation section of Ruecker, M., Vogt, M., Linton, O., Walsh, C. (2025) "Estimation and Inference in
+#'  High-Dimensional Panel Data Models with Interactive Fixed Effects" \doi{10.3982/QE2308}.
 #'  The example provides the code used to create the data sets
 #'  \bold{data_estimation.rda} and \bold{data_inference.rda} of the package.
 #' @param obs_N Number of cross-section units.
@@ -18,24 +17,24 @@
 #'  such  that first T observations are those for unit 1, followed by the T
 #'  observations for unit 2, etc.
 #'@examples
-#'# Simulate an example data set as in Scenario B of the paper with
-#'# N = 50, T = 50, RHO = 0.25, p = 901
+#'# Simulate an example data set with
+#'# N = 20, T = 20, RHO = 0.25, p = 61
 #'#-----------------------------------------------------------------------------
 #'
 #'# Set the parameters
 #'#-----------------------------------------------------------------------------
 #'\dontrun{
 #'# Set the number of cross-sections, time periods
-#'obs_N  <- 50
-#'obs_T  <- 50
-#'p <- 901
+#'obs_N  <- 20
+#'obs_T  <- 20
+#'p <- 61
 #'# Specify the pairwise correlation among the regressors
 #'RHO <- 0.25
 #'# Specify the mean for the factor loadings
 #'mu <- c(1, 1, 1, rep(1, (p-1)))
 #'
 #'# Simulate the data
-#'set.seed(2024)
+#'set.seed(2025)
 #'data <- generate_data(obs_N = obs_N, obs_T = obs_T, p,  mu = mu,
 #'                              RHO = RHO)
 #'data_estimation <- data$data_estimation
@@ -72,11 +71,11 @@ generate_data <- function(obs_N, obs_T, p, mu, RHO){
 
   # Generate factors
   F_1 <- as.vector(stats::arima.sim(model = list(ar = 0.5), n = obs_T,
-                             innov = rnorm(n = obs_T, mean = 0, sd = sqrt(0.75))))
+                             innov = stats::rnorm(n = obs_T, mean = 0, sd = sqrt(0.75))))
   F_2 <- as.vector(stats::arima.sim(model = list(ar = 0.5), n = obs_T,
-                             innov = rnorm(n = obs_T, mean = 0, sd = sqrt(0.75))))
+                             innov = stats::rnorm(n = obs_T, mean = 0, sd = sqrt(0.75))))
   F_3 <- as.vector(stats::arima.sim(model = list(ar = 0.5), n = obs_T,
-                             innov = rnorm(n = obs_T, mean = 0, sd = sqrt(0.75))))
+                             innov = stats::rnorm(n = obs_T, mean = 0, sd = sqrt(0.75))))
   F_matrix <- cbind(F_1, F_2, F_3)
 
   # Oracle projection matrix
@@ -88,15 +87,14 @@ generate_data <- function(obs_N, obs_T, p, mu, RHO){
                                                       ncol = (K + p - 1))
 
   # Idiosyncratic error iid across i and t
-  eps <- rnorm(n = obs_N * obs_T, mean = 0, sd = 1)
+  eps <- stats::rnorm(n = obs_N * obs_T, mean = 0, sd = 1)
 
   # Nodewise errors iid across i and t
-  u <- rnorm(n = obs_N * obs_T, mean = 0, sd = 1)
+  u <- stats::rnorm(n = obs_N * obs_T, mean = 0, sd = 1)
 
   # Idiosyncratic regressors
-  Z <- mvtnorm::rmvnorm(n = obs_N * obs_T, mean = rep(0, (p - 1),
-                                                        sd = diag(1, nrow = (p - 1),
-                                                                  ncol = (p - 1) )))
+  Z <- mvtnorm::rmvnorm(n = obs_N * obs_T, mean = rep(0, (p - 1)),
+                        sigma = diag(1, nrow = (p - 1), ncol = (p - 1)))
 
   G_i <- mvtnorm::rmvnorm(obs_N, mean = mu, sigma = Sigma_G)
 

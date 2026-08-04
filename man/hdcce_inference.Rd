@@ -52,30 +52,27 @@ estimator. 2 is set as default.}
 with the standardized projected data. The default is TRUE.}
 }
 \value{
-The function returns a list for where for each COEF_INDEX_VEC it contains
-the following:
-\itemize{
- \describe{
-  \item{$coef_despar}{Desparsified lasso estimate.}
-  \item{$Avar}{Asymptotic variance of desparsified lasso.}
-  \item{$confidence_band}{Symmetric confidence interval (lower and upper interval
-  value) for given alpha.}
-  }
+The function returns, for each entry of COEF_INDEX_VEC, a list with
+\describe{
+  \item{coef_despar}{Desparsified lasso estimate.}
+  \item{se}{Estimated standard error of the desparsified estimator.}
+  \item{confidence_band}{Symmetric confidence interval (lower and upper
+  interval value) for each significance level in alpha.}
 }
 }
 \description{
-\code{hdcce_inference} High-dimensional inference with the desparsified CCE
-estimator proposed in Linton, 0., Ruecker, M., Vogt, M., Walsh, C. (2024)
+\code{hdcce_inference} High-dimensional inference with the desparsified HD-CCE
+estimator proposed in Ruecker, M., Vogt, M., Linton, O., Walsh, C. (2025)
 "Estimation and Inference in High-Dimensional Panel Data Models with Interactive
-Fixed Effects".
+Fixed Effects" \doi{10.3982/QE2308}.
 }
 \examples{
 # Load the data set
 data("data_inference")
 
 # Set the dimensions of the data
-obs_N <- 50
-obs_T <- 50
+obs_N <- 20
+obs_T <- 20
 
 # signal = 1,2,3 corresponds to c** = 0, 0.1, 0.2
 signal <- 1
@@ -95,7 +92,8 @@ print(inference_model$confidence_band)
 
 }
 \references{
-Linton, 0., Ruecker, M., Vogt, M., Walsh, C. (2024) "Estimation
-and Inference in High-Dimensional Panel Data Models with Interactive
-Fixed Effects"
+Ruecker, M., Vogt, M., Linton, O. and Walsh, C. (2025).
+  Estimation and inference in high-dimensional panel data models with
+  interactive fixed effects. \emph{Quantitative Economics}, 16(4),
+  1457--1509. \doi{10.3982/QE2308}
 }
