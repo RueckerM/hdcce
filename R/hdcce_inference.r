@@ -1,7 +1,7 @@
 #' Inference for HD panels with IFE
 #'
-#' \code{hdcce_inference} High-dimensional inference with the desparsified CCE
-#' estimator proposed in Linton, 0., Ruecker, M., Vogt, M., Walsh, C. (2024)
+#' \code{hdcce_inference} High-dimensional inference with the desparsified HDCCE
+#' estimator proposed in Ruecker, M., Vogt, M., Linton, 0., Walsh, C. (2025)
 #' "Estimation and Inference in High-Dimensional Panel Data Models with Interactive
 #' Fixed Effects".
 #'
@@ -61,7 +61,7 @@
 #'
 #' print(inference_model$confidence_band)
 #'
-#' @references  Linton, 0., Ruecker, M., Vogt, M., Walsh, C. (2024) "Estimation
+#' @references  Ruecker, M., Vogt, M., Linton, 0., Walsh, C. (2025) "Estimation
 #' and Inference in High-Dimensional Panel Data Models with Interactive
 #' Fixed Effects"
 

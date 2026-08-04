@@ -1,7 +1,7 @@
 #' Estimate HD panels with IFE
 #'
 #' \code{hdcce_estimator} fits the high-dimensional CCE estimation procedure
-#' proposed in Linton, 0., Ruecker, M., Vogt, M., Walsh, C. (2024) "Estimation
+#' proposed in Ruecker, M., Vogt, M., Linton, 0., Walsh, C. (2025) "Estimation
 #' and Inference in High-Dimensional Panel Data Models with Interactive
 #' Fixed Effects".
 #'
@@ -62,7 +62,7 @@
 #'                       foldid = NULL, scree_plot = TRUE)
 #' print(estimate_model$coefs[c(1:10)])
 #'
-#' @references  Linton, 0., Ruecker, M., Vogt, M., Walsh, C. (2024) "Estimation
+#' @references  Ruecker, M., Vogt, M., Linton, 0., Walsh, C. (2025) "Estimation
 #' and Inference in High-Dimensional Panel Data Models with Interactive
 #' Fixed Effects"
 
