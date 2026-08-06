@@ -27,9 +27,7 @@ List containing the balanced panel data for estimation
  observations for unit 2, etc.
 }
 \description{
-\code{generate_data} generates data as in simulation section of Ruecker, M., Vogt, M., Linton, O., Walsh, C. (2025) "Estimation and Inference in
- High-Dimensional Panel Data Models with Interactive Fixed Effects" \doi{10.3982/QE2308}.
- The example provides the code used to create the data sets
+\code{generate_data} generates data as in simulation section of Rücker et al. (2025).
  \bold{data_estimation.rda} and \bold{data_inference.rda} of the package.
 }
 \examples{
@@ -58,4 +56,13 @@ data_inference <- data$data_inference
 save(data_estimation, file = "data_estimation.rda", compress = TRUE)
 save(data_inference, file = "data_inference.rda", compress = TRUE)
 }
+}
+\references{
+Rücker, M., Vogt, M., Linton, O. and Walsh, C. (2025).
+  Estimation and inference in high-dimensional panel data models with
+  interactive fixed effects. \emph{Quantitative Economics}, 16(4),
+  1457--1509. \doi{10.3982/QE2308}.
+
+  Rücker, M., Vogt, M. and Linton, O. (2026) "High-Dimensional Panel Data Models with
+  Interactive Fixed Effects: Beyond the Linear Case" \url{https://arxiv.org/pdf/2608.02055}.
 }

@@ -8,92 +8,115 @@ hdcce_inference(
   data,
   obs_N,
   obs_T,
+  COEF_INDEX_VEC,
+  dictionaries = NULL,
   TRUNC = 0.01,
   NFACTORS = NULL,
   NFOLDS = 10,
   foldid = NULL,
-  COEF_INDEX_VEC,
   alpha = c(0.01, 0.05, 0.1),
   HAC = 2,
-  standardize = TRUE
+  standardize = TRUE,
+  s_rule = "lambda.1se",
+  kernel = "epanechnikov",
+  C = 2,
+  h = NULL,
+  B = 5000
 )
 }
 \arguments{
-\item{data}{List containing the balanced panel data with data$y containing
-the dependent variables and data$x the regressors. Both are sorted such
-that first T observations are those for unit 1, followed by the T
-observations for unit 2, etc.}
+\item{data}{List containing the balanced panel data with \code{data$y} the
+dependent variable and \code{data$x} the regressors. Both are sorted such
+that the first \code{obs_T} observations are those for unit 1, followed by
+the \code{obs_T} observations for unit 2, etc.}
 
-\item{obs_N, obs_T}{The number of cross-section units (obs_N) and time series
-length (obs_T) in the data.}
+\item{obs_N, obs_T}{The number of cross-section units (\code{obs_N}) and the
+time series length (\code{obs_T}).}
+
+\item{COEF_INDEX_VEC}{Indices of the regressors to be tested.}
+
+\item{dictionaries}{Either \code{NULL} (linear model, the default) or a list
+with components \code{Phi}, an \code{obs_N * obs_T} x \code{d} matrix of
+dictionary transformations of \code{data$x}, and \code{group}, a
+\code{d}-vector with entries in \code{1,...,p} indicating which covariate
+each column transforms. Optionally \code{Phi_nw} and \code{group_nw} give a
+separate dictionary for the nodewise regression; they default to
+\code{Phi} and \code{group}.}
 
 \item{TRUNC}{The truncation parameter tau used to estimate the number of
 factors. Default is 0.01.}
 
-\item{NFACTORS}{Allows to set the number of factors use in estimation.
-Default is NULL so that the data driven choice with TRUNC = 0.01 is used.}
+\item{NFACTORS}{Allows to set the number of factors used in estimation.
+Default is NULL, so that the data driven choice with TRUNC is used.}
 
-\item{NFOLDS}{Specifies the number of folds to use when using cross-validation
-to select the lasso penalty based on cv.glmnet. Default is 10.
-Fold size can vary by one if obs_N is not divisible by NFOLDS.}
+\item{NFOLDS}{Number of folds for cross-validation in \code{cv.glmnet}.}
 
-\item{foldid}{Integer vector (obs_N*obs_T - dimensional) containing a label
-for each sample to determine its fold for CV.}
+\item{foldid}{Integer vector (\code{obs_N * obs_T}-dimensional) with a fold
+label for each observation.}
 
-\item{COEF_INDEX_VEC}{Indeces of regressors to be tested.}
+\item{alpha}{Vector of significance levels.}
 
-\item{alpha}{Vector containing significance levels.}
+\item{HAC}{Integer 1, 2 or 3, selecting the homoscedastic, heteroscedasticity
+robust, or HAC variance estimator. Only used in the linear case.}
 
-\item{HAC}{Integer = 1,2,3. 1 employ homoscedastic no serial correlation,
-2 heteroscedastic no serial correlation and 3 HAC variance
-estimator. 2 is set as default.}
+\item{standardize}{Logical; whether \code{glmnet} is called with standardized
+projected data.}
 
-\item{standardize}{Logical variable to indicate whether glmnet is called
-with the standardized projected data. The default is TRUE.}
+\item{s_rule}{Either \code{"lambda.1se"} (default) or \code{"lambda.min"},
+the rule used to select the penalties from cross-validation.}
+
+\item{kernel}{Kernel with support \code{[-1,1]} used for the test, either
+\code{"epanechnikov"}, \code{"biweight"}, or a function.}
+
+\item{C, h}{Half-width of the region of locations and the bandwidth, both in
+units of the standard deviation of the nodewise residuals. Defaults are
+\code{C = 2} and \code{h = (obs_N * obs_T)^(-1/5)}.}
+
+\item{B}{Number of Monte Carlo draws for the Gaussian coupling.}
 }
 \value{
-The function returns, for each entry of COEF_INDEX_VEC, a list with
+A list with components \code{results} (a list with one entry per
+  element of \code{COEF_INDEX_VEC}, named by the index), \code{alpha},
+  \code{obs_N}, \code{obs_T}, \code{type} and \code{call}. Each entry of
+  \code{results} is a list with
 \describe{
-  \item{coef_despar}{Desparsified lasso estimate.}
-  \item{se}{Estimated standard error of the desparsified estimator.}
-  \item{confidence_band}{Symmetric confidence interval (lower and upper
-  interval value) for each significance level in alpha.}
+  \item{coef_despar}{Desparsified estimate; \code{NULL} in the dictionary case.}
+  \item{se}{Estimated standard error; \code{NULL} in the dictionary case.}
+  \item{statistic}{z-statistic for H0: beta_j = 0, or the max-type statistic.}
+  \item{critical_values}{Critical value for each level in \code{alpha}.}
+  \item{p_value}{Two-sided normal p-value, or Monte Carlo p-value.}
+  \item{reject}{Logical, one entry per level in \code{alpha}.}
+  \item{confidence_band}{Confidence interval per level; \code{NULL} in the
+    dictionary case.}
+  \item{profile}{Data frame with the grid of locations, the corresponding
+    Psi_w and the number of residuals in each bump; \code{NULL} in the
+    linear case.}
+  \item{K_hat, sigma_hat}{Estimated number of factors and error standard
+    deviation.}
 }
 }
 \description{
-\code{hdcce_inference} High-dimensional inference with the desparsified HD-CCE
-estimator proposed in Ruecker, M., Vogt, M., Linton, O., Walsh, C. (2025)
-"Estimation and Inference in High-Dimensional Panel Data Models with Interactive
-Fixed Effects" \doi{10.3982/QE2308}.
+\code{hdcce_inference} performs high-dimensional inference with either
+(i) the desparsified HD-CCE estimator of Rücker et al. (2025), giving
+confidence intervals for individual coefficients, or (ii) the max-type
+significance test of Rücker et al. (2026) for the null that a covariate has
+no effect in the parametric additive model, when a dictionary is supplied.
 }
 \examples{
-# Load the data set
 data("data_inference")
-
-# Set the dimensions of the data
 obs_N <- 20
 obs_T <- 20
-
-# signal = 1,2,3 corresponds to c** = 0, 0.1, 0.2
-signal <- 1
-
-# Use correct column of Y
-data_inference <- list(x = data_inference$x, y = data_inference$y[,signal])
-
-# Regressor to be tested
-COEF_INDEX_VEC <- 1
-
-# Inference example
-inference_model <- hdcce_inference(data_inference, obs_N, obs_T, TRUNC = 0.01,
- NFACTORS = NULL, NFOLDS = 10, foldid = NULL, COEF_INDEX_VEC,
- alpha = c(0.01, 0.05, 0.1))
-
-print(inference_model$confidence_band)
-
+dat <- list(x = data_inference$x, y = data_inference$y[, 1])
+fit <- hdcce_inference(dat, obs_N, obs_T, COEF_INDEX_VEC = 1)
+fit$results[["1"]]$confidence_band
 }
 \references{
-Ruecker, M., Vogt, M., Linton, O. and Walsh, C. (2025).
+Rücker, M., Vogt, M., Linton, O. and Walsh, C. (2025).
   Estimation and inference in high-dimensional panel data models with
   interactive fixed effects. \emph{Quantitative Economics}, 16(4),
   1457--1509. \doi{10.3982/QE2308}
+
+  Rücker, M., Vogt, M. and Linton, O. (2026). High-dimensional panel data
+  models with interactive fixed effects: beyond the linear case.
+  \url{https://arxiv.org/abs/2608.02055}
 }

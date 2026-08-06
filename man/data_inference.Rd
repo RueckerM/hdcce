@@ -25,9 +25,12 @@ in the coefficient of the first regressor; used to illustrate
 \code{\link{hdcce_inference}}.
 }
 \references{
-Ruecker, M., Vogt, M., Linton, O. and Walsh, C. (2025).
+Rücker, M., Vogt, M., Linton, O. and Walsh, C. (2025).
   Estimation and inference in high-dimensional panel data models with
   interactive fixed effects. \emph{Quantitative Economics}, 16(4),
   1457--1509. \doi{10.3982/QE2308}
+
+  Rücker, M., Vogt, M. and Linton, O. (2026) "High-Dimensional Panel Data Models with
+  Interactive Fixed Effects: Beyond the Linear Case" <https://arxiv.org/pdf/2608.02055>.
 }
 \keyword{datasets}

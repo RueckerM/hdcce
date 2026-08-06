@@ -1,7 +1,7 @@
 Package: hdcce
 Type: Package
-Title: Estimation and Inference for High-Dimensional Panel Data Models with 
-       Interactive Fixed Effects
+Title: Estimation and Inference for High-Dimensional Panel Data Models
+        with Interactive Fixed Effects
 Version: 0.1.0
 Date: 2026-08-04
 Authors@R: c(
@@ -10,17 +10,23 @@ Authors@R: c(
     person(given = "Michael", family = "Vogt", role = "aut"),
     person(given = "Christopher", family = "Walsh", role = "aut"),
     person(given = "Oliver", family = "Linton", role = "aut"))
-Description: Estimation and Inference procedures for High-Dimensional 
-             Panel Models with Interactive Fixed Effects proposed in Ruecker, M., 
-             Vogt, M., Linton, O., Walsh, C. (2025)
-             "Estimation and Inference in High-Dimensional Panel Data Models with Interactive
-             Fixed Effects" <doi:10.3982/QE2308>.
-License: GPL (>= 2 )
+Description: Lasso-type estimation and desparsified inference for panel data
+    models with interactive fixed effects and a large number of regressors. The
+    methods cover i) the linear specification of Ruecker, M., Vogt, M.,
+    Linton, O. and Walsh, C. (2025) "Estimation and Inference in
+    High-Dimensional Panel Data Models with Interactive Fixed Effects"
+    <doi:10.3982/QE2308>, and ii) the dictionary design of Ruecker, M.,
+    Vogt, M. and Linton, O. (2026) "High-Dimensional Panel Data Models with
+    Interactive Fixed Effects: Beyond the Linear Case" <arXiv:2608.02055>.
+License: GPL (>= 2)
 Encoding: UTF-8
-LazyData: true
-RoxygenNote: 7.3.2
+Depends: R (>= 3.5.0)
 Imports: stats,
+         graphics,
          glmnet,
-         mvtnorm,
-         graphics
-URL:  https://github.com/RueckerM/hdcce
+         mvtnorm
+LazyData: true
+LazyDataCompression: xz
+RoxygenNote: 7.3.2
+URL: https://github.com/RueckerM/hdcce
+
