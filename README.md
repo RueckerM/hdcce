@@ -1,8 +1,3 @@
----
-output:
-  html_document: default
-  pdf_document: default
----
 # hdcce
 
 Estimation and inference for high-dimensional panel data models with interactive
