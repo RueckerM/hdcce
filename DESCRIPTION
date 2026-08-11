@@ -8,8 +8,8 @@ Authors@R: c(
     person(given = "Maximilian", family = "Ruecker",
            role = c("aut", "cre"), email = "maximilian.ruecker@uni-ulm.de"),
     person(given = "Michael", family = "Vogt", role = "aut"),
-    person(given = "Christopher", family = "Walsh", role = "aut"),
-    person(given = "Oliver", family = "Linton", role = "aut"))
+    person(given = "Oliver", family = "Linton", role = "aut"),
+    person(given = "Christopher", family = "Walsh", role = "aut"))
 Description: Lasso-type estimation and desparsified inference for panel data
     models with interactive fixed effects and a large number of regressors. The
     methods cover i) the linear specification of Ruecker, M., Vogt, M.,
@@ -25,6 +25,8 @@ Imports: stats,
          graphics,
          glmnet,
          mvtnorm
+Suggests: knitr, rmarkdown
+VignetteBuilder: knitr        
 LazyData: true
 LazyDataCompression: xz
 RoxygenNote: 7.3.2

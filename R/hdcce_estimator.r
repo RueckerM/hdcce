@@ -44,14 +44,15 @@
 #' @return A list with
 #' \describe{
 #'   \item{coefs}{The coefficient estimates. A numeric vector, except when a
-#'     \code{lambda} grid is supplied, in which case a \code{d} x
-#'     \code{length(lambda)} matrix with one column per penalty.}
+#'     \code{lambda} grid is supplied, in which case a matrix with one column per penalty.}
 #'   \item{K_hat}{The estimated number of factors, or \code{NFACTORS} if set.}
 #'   \item{Lambda}{The penalty selected by cross-validation, on the scale of the
 #'     paper; the supplied grid if \code{lambda} was given; \code{NULL} for
 #'     \code{variant = "LS"}.}
 #'   \item{eigenvalues}{The normalised eigenvalues used to determine
 #'     \code{K_hat}.}
+#'   \item{Projection_Matrix}{The computed projection matrix
+#'     \code{Pi_hat}.}
 #'   \item{type}{Either \code{"linear"} or \code{"dictionary"}.}
 #'   \item{call}{The matched call.}
 #' }
@@ -274,6 +275,7 @@ hdcce_estimator <- function(data, obs_N, obs_T, dictionaries = NULL,
               K_hat       = K_hat,
               Lambda      = Lambda,
               eigenvalues = eigen_values,
+              Projection_Matrix = Pi_hat,
               type        = if(use_dict) "dictionary" else "linear",
               call        = cl)
   class(out) <- "hdcce_fit"

@@ -36,9 +36,19 @@
 #'   the rule used to select the penalties from cross-validation.
 #' @param kernel Kernel with support \code{[-1,1]} used for the test, either
 #'   \code{"epanechnikov"}, \code{"biweight"}, or a function.
-#' @param C,h Half-width of the region of locations and the bandwidth, both in
-#'   units of the standard deviation of the nodewise residuals. Defaults are
-#'   \code{C = 2} and \code{h = (obs_N * obs_T)^(-1/5)}.
+#' @param C Half-width of the region of locations scanned by the test, in the
+#'   units of the nodewise residuals: the statistic is maximised over
+#'   \eqn{w \in [-C, C]}. Supply it when the support of the nodewise residuals
+#'   is known. The default is \code{NULL}, in which case \code{C} is set to the
+#'   \code{QUANT} quantile of the absolute nodewise residuals, so that the
+#'   interval \eqn{[-C, C]} contains that share of them.
+#' @param QUANT Quantile used for the data-driven choice of \code{C}; ignored
+#'   when \code{C} is supplied. The default is 0.9. Larger values reach further
+#'   into the tails at the cost of thinner outer bumps.
+#' @param h Bandwidth of the kernel weights, in the same units as \code{C}. The
+#'   default is \code{NULL}, in which case \code{h} is chosen by Silverman's
+#'   rule of thumb applied to the nodewise residuals,
+#'   \eqn{0.9 \hat\sigma_u (nT)^{-1/5}}.
 #' @param B Number of Monte Carlo draws for the Gaussian coupling.
 #' @return A list with components \code{results} (a list with one entry per
 #'   element of \code{COEF_INDEX_VEC}, named by the index), \code{alpha},
@@ -47,9 +57,9 @@
 #' \describe{
 #'   \item{coef_despar}{Desparsified estimate; \code{NULL} in the dictionary case.}
 #'   \item{se}{Estimated standard error; \code{NULL} in the dictionary case.}
-#'   \item{statistic}{z-statistic for H0: beta_j = 0, or the max-type statistic.}
+#'   \item{statistic}{z-statistic for H0: beta_j = 0, or the max-type statistic in the dictionary case..}
 #'   \item{critical_values}{Critical value for each level in \code{alpha}.}
-#'   \item{p_value}{Two-sided normal p-value, or Monte Carlo p-value.}
+#'   \item{p_value}{Two-sided normal p-value, or Monte Carlo p-value in the dictionary case..}
 #'   \item{reject}{Logical, one entry per level in \code{alpha}.}
 #'   \item{confidence_band}{Confidence interval per level; \code{NULL} in the
 #'     dictionary case.}
@@ -59,6 +69,12 @@
 #'   \item{K_hat, sigma_hat}{Estimated number of factors and error standard
 #'     deviation.}
 #' }
+#' @details
+#' The grid of locations is
+#' \eqn{\mathcal{W} = \{ w \in [-C, C] : w = -C + (2\ell - 1) h,\ \ell = 1, 2,
+#' \ldots \}}, so that the supports of the kernel weights are disjoint and the
+#' number of locations is \eqn{L = \lfloor C / h + 1/2 \rfloor}
+#'
 #' @references Rücker, M., Vogt, M., Linton, O. and Walsh, C. (2025).
 #'   Estimation and inference in high-dimensional panel data models with
 #'   interactive fixed effects. \emph{Quantitative Economics}, 16(4),
@@ -82,7 +98,8 @@ hdcce_inference <- function(data, obs_N, obs_T, COEF_INDEX_VEC,
                             alpha = c(0.01, 0.05, 0.1), HAC = 2,
                             standardize = TRUE,
                             s_rule = "lambda.1se",
-                            kernel = "epanechnikov", C = 2, h = NULL,
+                            kernel = "epanechnikov", C = NULL, QUANT = 0.9,
+                            h = NULL,
                             B = 5000){
 
   s_rule <- match.arg(s_rule)
@@ -346,7 +363,7 @@ hdcce_inference <- function(data, obs_N, obs_T, COEF_INDEX_VEC,
       #   with C and h constants in the units of the nodewise residuals.
       if (is.null(C) || is.null(h)) {
         sd_u <- sqrt(mean(resid_node^2))          # only used to set defaults
-        if (is.null(C)) C <- 2 * sd_u
+        if (is.null(C)) C <- stats::quantile(abs(resid_node), QUANT, names = FALSE)
         if (is.null(h)) h <- sd_u * n_obs^(-1/5)
       }
       L <- floor(C / h + 0.5)
@@ -416,6 +433,5 @@ hdcce_inference <- function(data, obs_N, obs_T, COEF_INDEX_VEC,
               obs_T   = obs_T,
               type    = if(use_dict) "dictionary" else "linear",
               call    = cl)
-  class(out) <- c(if(use_dict) "hdcce_test" else "hdcce_ci", "hdcce")
   out
 }
