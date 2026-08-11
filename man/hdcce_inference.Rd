@@ -71,8 +71,7 @@ the rule used to select the penalties from cross-validation.}
 
 \item{C}{Half-width of the region of locations scanned by the test, in the
 units of the nodewise residuals: the statistic is maximised over
-\eqn{w \in [-C, C]}. Supply it when the support of the nodewise residuals
-is known. The default is \code{NULL}, in which case \code{C} is set to the
+\eqn{w \in [-C, C]}. The default is \code{NULL}, in which case \code{C} is set to the
 \code{QUANT} quantile of the absolute nodewise residuals, so that the
 interval \eqn{[-C, C]} contains that share of them.}
 

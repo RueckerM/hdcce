@@ -1,7 +1,6 @@
 ---
 title: "Estimation and inference with hdcce"
 output: rmarkdown::html_vignette
-bibliography: null
 vignette: >
   %\VignetteIndexEntry{Estimation and inference with hdcce}
   %\VignetteEngine{knitr::rmarkdown}
@@ -9,44 +8,56 @@ vignette: >
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>",
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message = FALSE,
                       fig.width = 6.5, fig.height = 3.6, fig.align = "center")
 options(width = 88)
 set.seed(20260810)
 ```
 
-This vignette shows how to use **hdcce** on a panel with many regressors and
-unobserved interactive fixed effects. It covers the three things the package
-does: estimating the slope vector, constructing confidence intervals for
-individual coefficients, and testing whether a covariate enters the model at
-all when the specification is additive rather than linear.
-
-The methods are those of Rücker, Vogt, Linton and Walsh (2025) and Rücker,
-Vogt and Linton (2026); this document explains what the functions compute and
-how to read their output, not the theory behind them.
-
 ```{r}
 library(hdcce)
 ```
 
-# 1. The model and the data layout
+# 1. Introduction
 
-For units $i = 1, \dots, n$ and periods $t = 1, \dots, T$,
+**hdcce** fits panel data models in which the number of regressors may exceed
+the number of observations and the unobserved heterogeneity has an interactive
+structure. It handles two specifications, and offers estimation and inference
+for each.
+
+The **linear model**, for units $i = 1, \dots, n$ and periods $t = 1, \dots, T$,
 
 $$Y_{it} = X_{it}^\top \beta + \gamma_i^\top F_t + \varepsilon_{it},$$
 
-where $X_{it} \in \mathbb{R}^p$, the $F_t \in \mathbb{R}^K$ are unobserved
-factors and the $\gamma_i$ are unit-specific loadings. The dimension $p$ may
-exceed $nT$, and $\beta$ is assumed sparse. Neither the factors nor the
-loadings are estimated: they are removed by projecting on the space spanned by
-the cross-sectional averages of the regressors.
+with $X_{it} \in \mathbb{R}^p$, unobserved factors $F_t \in \mathbb{R}^K$ and
+unit-specific loadings $\gamma_i$. The vector $\beta$ is assumed sparse.
 
-**The panel must be sorted by unit.** Rows $(i-1)T + 1, \dots, iT$ of `x` and
-`y` belong to unit $i$. This is not checked, and a panel sorted by period will
-return numbers rather than an error.
+The **additive model**, in which each covariate enters through an unknown
+function expanded in a known dictionary,
 
-The package ships two simulated panels produced by `generate_data`, with
-$n = T = 20$ and $p = 61$:
+$$Y_{it} = \sum_{j=1}^p m_j(X_{it,j}) + \gamma_i^\top F_t + \varepsilon_{it},
+\qquad m_j(x) = \phi_j(x)^\top \beta_j ,$$
+
+with $\phi_j = (\phi_{j1}, \dots, \phi_{jL_j})^\top$. Collecting the
+transformations of all covariates gives a design with $d = \sum_j L_j$ columns.
+
+In both cases the factors and loadings are never estimated. They are removed by
+projecting the data on the orthogonal complement of the space spanned by the
+cross-sectional averages of the regressors, after which a lasso is run on the
+projected data. Which specification is used is determined by a single argument:
+supplying `dictionaries` switches from the first model to the second, in both
+`hdcce_estimator` and `hdcce_inference`.
+
+## Data layout
+
+**The panel must be sorted by unit.** Rows $(i-1)T + 1, \dots, iT$ of `x`, `y`
+and `Phi` belong to unit $i$. This is not checked, and a panel sorted by period
+returns numbers rather than an error.
+
+## The shipped data
+
+Two simulated panels come with the package, both produced by `generate_data`
+with $n = T = 20$ and $p = 61$.
 
 ```{r}
 data("data_estimation")
@@ -54,26 +65,48 @@ data("data_inference")
 
 obs_N <- 20
 obs_T <- 20
+p     <- ncol(data_estimation$x)
 
 dim(data_estimation$x)
-length(data_estimation$y)
 ```
 
-The true coefficient vector has ten non-zero entries: the first regressor, and
-the first three regressors of each of three groups.
+They are generated from a linear design whose coefficient vector has ten
+non-zero entries: the first regressor, and the first three regressors of each of
+three groups.
 
 ```{r}
-p     <- ncol(data_estimation$x)
-gsize <- (p - 1) / 3
+gsize     <- (p - 1) / 3
 beta_true <- c(1, rep(c(1, 1, 1, rep(0, gsize - 3)), 3))
 which(beta_true != 0)
 ```
 
+`data_inference$y` has three columns, differing only in the coefficient of the
+first regressor: $c^{**} = 0$, $0.1$ and $0.2$. The first column therefore has
+$\beta_1 = 0$, which is used below as a case where the null is true.
+
+Throughout, a dictionary with $\phi_j(x) = (x, x^2)$ serves as the example
+expansion. It is supplied as a matrix of stacked transformations together with a
+vector recording which covariate each column belongs to.
+
+```{r}
+make_dict <- function(X) {
+  Phi <- do.call(cbind, lapply(seq_len(ncol(X)), function(j) cbind(X[, j], X[, j]^2)))
+  list(Phi = Phi, group = rep(seq_len(ncol(X)), each = 2))
+}
+dict_est <- make_dict(data_estimation$x)
+dict_inf <- make_dict(data_inference$x)
+dim(dict_est$Phi)
+```
+
+Since the shipped panels come from a linear design, the true $m_j$ are linear
+and the quadratic columns of the dictionary have coefficient zero.
+
 # 2. Estimation
 
-`hdcce_estimator` performs the two steps of the procedure: it estimates the
-factor space from the cross-sectional averages and projects the data on its
-orthogonal complement, then runs a lasso on the projected data.
+## 2.1 Linear specification
+
+`hdcce_estimator` estimates the factor space from the cross-sectional averages,
+projects the data on its orthogonal complement, and runs a lasso.
 
 ```{r}
 fit <- hdcce_estimator(data_estimation, obs_N = obs_N, obs_T = obs_T,
@@ -83,8 +116,7 @@ fit$K_hat
 
 The number of factors is the count of normalised eigenvalues of
 $\bar{\boldsymbol{X}}^\top \bar{\boldsymbol{X}} / T$ exceeding the truncation
-`TRUNC`. The returned `eigenvalues` let you see how clear-cut that decision
-was:
+`TRUNC`. The returned `eigenvalues` show how clear-cut that decision was.
 
 ```{r scree}
 plot(fit$eigenvalues[1:15], type = "b", pch = 16, ylim = c(0, 1),
@@ -98,32 +130,46 @@ A sharp drop after the third eigenvalue is what one hopes to see; a gradual
 decay means the factor number is not well identified and the result will be
 sensitive to `TRUNC`. Supplying `NFACTORS` fixes $\widehat{K}$ directly.
 
-The estimated coefficients recover the sparsity pattern, with the usual lasso
-shrinkage towards zero:
+The estimates recover the sparsity pattern, with the usual shrinkage:
 
 ```{r}
-round(head(as.numeric(fit$coefs), 6), 3)
-
 est <- as.numeric(fit$coefs)
-c(selected      = sum(est != 0),
-  true_nonzero  = sum(beta_true != 0),
-  found         = sum(est[beta_true != 0] != 0))
+round(head(est, 6), 3)
+
+c(selected     = sum(est != 0),
+  true_nonzero = sum(beta_true != 0),
+  found        = sum(est[beta_true != 0] != 0))
 ```
 
-More coefficients are selected than are truly non-zero. That is expected when
-the penalty is chosen by cross-validation, which targets prediction rather than
-selection, and it is the reason inference requires the debiasing step below
-rather than reading significance off the lasso fit.
+All ten non-zero coefficients are selected, alongside a number of false
+positives. That is expected when the penalty is chosen by cross-validation,
+which targets prediction rather than selection, and it is the reason inference
+requires the debiasing step of Section 3 rather than reading significance off
+the lasso fit.
 
-# 3. Confidence intervals
+## 2.2 Dictionary specification
+
+Supplying `dictionaries` estimates the additive model instead. The returned
+coefficients are the $d$ dictionary coefficients rather than $p$ slopes, named
+by covariate and position within its block.
+
+```{r}
+fit_d <- hdcce_estimator(data_estimation, obs_N = obs_N, obs_T = obs_T,
+                         dictionaries = dict_est, NFOLDS = 5)
+c(K_hat = fit_d$K_hat, n_coef = length(as.numeric(fit_d$coefs)))
+round(head(fit_d$coefs, 6), 3)
+```
+
+
+
+# 3. Inference
+
+## 3.1 Linear specification: confidence intervals
 
 `hdcce_inference` returns a desparsified estimate for each coefficient in
-`COEF_INDEX_VEC`. The debiasing runs a nodewise lasso of the target regressor
-on the others and corrects the lasso estimate along the resulting residual
+`COEF_INDEX_VEC`. The debiasing runs a nodewise lasso of the target regressor on
+the others and corrects the lasso estimate along the resulting residual
 direction, which restores asymptotic normality.
-
-The second shipped panel has three response columns, differing only in the
-coefficient of the first regressor: $c^{**} = 0$, $0.1$ and $0.2$.
 
 ```{r}
 dat0 <- list(x = data_inference$x, y = data_inference$y[, 1])   # beta_1 = 0
@@ -136,8 +182,7 @@ r$confidence_band
 ```
 
 Rows of `confidence_band` follow the order of `alpha`, which defaults to
-`c(0.01, 0.05, 0.10)`. The interval covers zero, as it should: the truth here
-is $\beta_1 = 0$.
+`c(0.01, 0.05, 0.10)`. The interval covers zero, as it should.
 
 With a non-zero coefficient the interval moves away from zero:
 
@@ -152,30 +197,27 @@ The reported $p$-value tests $H_0 \colon \beta_j = 0$ and is exactly dual to the
 band: $p \le \alpha$ if and only if zero lies outside the $(1-\alpha)$ interval.
 
 ```{r}
-alpha <- inf0$alpha
-cb    <- r$confidence_band
-cbind(alpha,
-      p_le_alpha    = r$p_value <= alpha,
+cb <- r$confidence_band
+cbind(alpha         = inf0$alpha,
+      p_le_alpha    = r$p_value <= inf0$alpha,
       zero_excluded = !(cb[, 1] <= 0 & 0 <= cb[, 2]))
 ```
 
 Several coefficients can be treated in one call; the result carries one entry
-per index, named by it.
+per index, named by it. Coefficients 1 and 5 are truly zero here, coefficient 2
+is truly one.
 
 ```{r}
 inf_multi <- hdcce_inference(dat0, obs_N = obs_N, obs_T = obs_T,
                              COEF_INDEX_VEC = c(1, 2, 5), NFOLDS = 5)
-names(inf_multi$results)
 t(sapply(inf_multi$results,
          function(z) c(estimate = z$coef_despar, se = z$se, p = z$p_value)))
 ```
 
-Coefficients 1 and 5 are truly zero, coefficient 2 is truly one.
-
 The `HAC` argument selects the variance estimator: `1` assumes homoscedastic
 errors without serial correlation, `2` (the default) allows heteroscedasticity,
-and `3` allows serial correlation as well. The choice matters in small $T$,
-where the unit-wise variance estimates underlying `HAC = 2` rest on few degrees
+and `3` allows serial correlation as well. The choice matters when $T$ is small,
+since the unit-wise variance estimates underlying `HAC = 2` rest on few degrees
 of freedom.
 
 ```{r}
@@ -184,114 +226,91 @@ sapply(1:3, function(k)
                   NFOLDS = 5, HAC = k)$results[["1"]]$se)
 ```
 
-# 4. Testing a covariate in an additive model
+## 3.2 Dictionary specification: significance test
 
-Supplying `dictionaries` replaces the linear index by
+With a dictionary the null of interest is $H_0 \colon m_j = 0$, a functional
+null. There is no scalar to invert, so the output is a test rather than a
+confidence interval: `se` and `confidence_band` are `NULL`, and a `statistic`,
+`critical_values`, `p_value` and `profile` take their place.
 
-$$Y_{it} = \sum_{j=1}^p m_j(X_{it,j}) + \gamma_i^\top F_t + \varepsilon_{it},
-\qquad m_j(x) = \phi_j(x)^\top \beta_j,$$
+The statistic is a maximum, over a grid of locations $w$, of self-normalised
+correlations between the residuals under the null and kernel weights centred at
+$w$. Its critical values come from a Gaussian coupling simulated `B` times.
 
-where $\phi_j$ is a known vector of $L_j$ transformations. The function then
-tests $H_0 \colon m_j = 0$ against $H_1 \colon m_j \neq 0$, which is a
-functional null: there is no scalar to invert, so the output is a test rather
-than a confidence interval.
-
-A dictionary is a matrix `Phi` of stacked transformations together with a
-vector `group` recording which covariate each of its columns transforms. With
-$\phi_j(x) = (x, x^2)$:
+**A covariate with no effect.** In the first response column $\beta_1 = 0$, so
+$m_1 \equiv 0$ and the null is true.
 
 ```{r}
-X   <- data_inference$x
-Phi <- do.call(cbind, lapply(1:p, function(j) cbind(X[, j], X[, j]^2)))
-dict <- list(Phi = Phi, group = rep(1:p, each = 2))
-dim(Phi)
-```
-
-We check, whether the first covariate has an influence at all:
-```{r}
-tst <- hdcce_inference(list(x = X, y = data_inference$y[, 1]),
-                       obs_N = obs_N, obs_T = obs_T, COEF_INDEX_VEC = 1,
-                       dictionaries = dict, NFOLDS = 5, B = 500)
-
-q1<- tst$results[["1"]]
+tst1 <- hdcce_inference(list(x = data_inference$x, y = data_inference$y[, 1]),
+                        obs_N = obs_N, obs_T = obs_T, COEF_INDEX_VEC = 1,
+                        dictionaries = dict_inf, NFOLDS = 5, B = 500)
+q1 <- tst1$results[["1"]]
 c(statistic = q1$statistic, p_value = q1$p_value)
 q1$critical_values
 ```
 
+**A covariate with an effect.** The second covariate has coefficient one in the
+same response, so the null is false.
 
-
-We check, whether the second covariate has an influence at all:
 ```{r}
-tst <- hdcce_inference(list(x = X, y = data_inference$y[, 1]),
-                       obs_N = obs_N, obs_T = obs_T, COEF_INDEX_VEC = 2,
-                       dictionaries = dict, NFOLDS = 5, B = 500)
-
-q2 <- tst$results[["2"]]
+tst2 <- hdcce_inference(list(x = data_inference$x, y = data_inference$y[, 1]),
+                        obs_N = obs_N, obs_T = obs_T, COEF_INDEX_VEC = 2,
+                        dictionaries = dict_inf, NFOLDS = 5, B = 500)
+q2 <- tst2$results[["2"]]
 c(statistic = q2$statistic, p_value = q2$p_value)
 q2$critical_values
 ```
 
-The statistic is a maximum of self-normalised correlations between the
-residuals under the null and kernel weights centred at a grid of locations
-$w$; its critical values come from a Gaussian coupling, simulated `B` times.
-Because it is a maximum, it is informative to look at where the evidence sits:
+Because the statistic is a maximum it is informative to see where the evidence
+sits. The `profile` records $\Psi_{w,h}$ across the grid.
 
-```{r profile1}
-prof1 <- q1$profile
-plot(prof1$w, abs(prof1$Psi_w), type = "b", pch = 16,
-     xlab = "location w", ylab = expression(group("|", Psi[list(w,h)], "|")),
-     ylim = range(0, abs(prof1$Psi_w), q1$critical_values))
-abline(h = q1$critical_values[2], col = "red", lty = 2)
-legend("topright", "5% critical value", lty = 2, col = "red", bty = "n")
+```{r profiles, fig.height = 3.2}
+op <- par(mfrow = c(1, 2), mar = c(4.2, 4.2, 2.4, 1))
+for (z in list(list(q = q1, main = "covariate 1  (no effect)"),
+               list(q = q2, main = "covariate 2  (effect)"))) {
+  pr <- z$q$profile
+  plot(pr$w, abs(pr$Psi_w), type = "b", pch = 16, main = z$main,
+       xlab = "location w", ylab = expression(group("|", Psi[list(w, h)], "|")),
+       ylim = range(0, abs(pr$Psi_w), z$q$critical_values))
+  abline(h = z$q$critical_values[2], col = "red", lty = 2)
+}
+par(op)
 ```
 
-for the first test and
-
-```{r profile2}
-prof2 <- q2$profile
-plot(prof2$w, abs(prof2$Psi_w), type = "b", pch = 16,
-     xlab = "location w", ylab = expression(group("|", Psi[list(w,h)], "|")),
-     ylim = range(0, abs(prof2$Psi_w), q2$critical_values))
-abline(h = q2$critical_values[2], col = "red", lty = 2)
-legend("topright", "5% critical value", lty = 2, col = "red", bty = "n")
-```
-
-
-for the second test.
-
+For the first covariate the curve stays well below the 5% critical value at
+every location; for the second it crosses it, and the crossing identifies the
+region of the nodewise residuals in which the deviation is detected.
 
 The `profile` also reports `n_eff`, the number of nodewise residuals falling in
-each bump. This is the diagnostic to check before trusting the test: when the
-smallest count is very low the Gaussian approximation is unreliable, and the
-bandwidth should be increased or the region narrowed.
-
-
-```{r}
-prof1
-```
-
-and
+each bump $[w-h, w+h]$. This is the diagnostic to check before trusting the
+test: when the smallest count is low the Gaussian approximation is unreliable,
+and the bandwidth should be increased or the region narrowed.
 
 ```{r}
-prof2
+q2$profile
 ```
 
+Note that the projection is rebuilt from $\bar{\boldsymbol{X}}_{(-j)}$ for each
+tested index, so the grid, $\widehat{K}$ and the residuals differ slightly
+between the two tests above.
 
-# 5. Two things worth checking
+# 4. Two things worth checking
 
-**The factor number.** Everything downstream depends on
-$\widehat{\boldsymbol{\Pi}}$ removing the factors, and that in turn requires the
-cross-sectional averages to identify the factor space — the usual CCE rank
-condition, which asks the mean loading matrix to have rank $K$. When it fails,
-$\widehat{K}$ is driven below the truth, a factor component survives in the
-residuals, the estimated error variance inflates and the procedures lose power.
-The scree plot above is the quick diagnostic.
+**The factor number.** Everything downstream depends on the projection removing
+the factors, and that in turn requires the cross-sectional averages to identify
+the factor space — the usual CCE rank condition, which asks the mean loading
+matrix to have rank $K$. When it fails, $\widehat{K}$ is driven below the truth,
+a factor component survives in the residuals, the estimated error variance
+inflates and the procedures lose power. The scree plot of Section 2.1 is the
+quick diagnostic.
 
 **The occupancy of the grid.** For the test, `min(profile$n_eff)` says how much
-data supports the sparsest direction. Compare it against the total (Test 1):
+data supports the sparsest direction.
 
 ```{r}
-c(min_n_eff = min(prof1$n_eff), max_n_eff = max(prof1$n_eff), nT = obs_N * obs_T)
+rbind(covariate_1 = c(min = min(q1$profile$n_eff), max = max(q1$profile$n_eff)),
+      covariate_2 = c(min = min(q2$profile$n_eff), max = max(q2$profile$n_eff)))
+c(nT = obs_N * obs_T)
 ```
 
 # References

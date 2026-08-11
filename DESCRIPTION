@@ -17,7 +17,7 @@ Description: Lasso-type estimation and desparsified inference for panel data
     High-Dimensional Panel Data Models with Interactive Fixed Effects"
     <doi:10.3982/QE2308>, and ii) the dictionary design of Ruecker, M.,
     Vogt, M. and Linton, O. (2026) "High-Dimensional Panel Data Models with
-    Interactive Fixed Effects: Beyond the Linear Case" <arXiv:2608.02055>.
+    Interactive Fixed Effects: Beyond the Linear Case" <doi:10.48550/arXiv.2608.02055>.
 License: GPL (>= 2)
 Encoding: UTF-8
 Depends: R (>= 3.5.0)
